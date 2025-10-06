@@ -47,7 +47,7 @@ import { SkeletonLoader } from "@/components/dashboard/skeleton-loader";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import { doc, collection, setDoc, query, orderBy, limit } from 'firebase/firestore';
-import { signOut, type User } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import {
   requestNotificationPermission,

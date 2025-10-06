@@ -7,10 +7,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -23,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { type User as UserData } from "@/lib/data";
 import { Loader2, Copy } from "lucide-react";
-import Link from "next/link";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Please enter your name." }),

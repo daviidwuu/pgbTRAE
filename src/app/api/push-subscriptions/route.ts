@@ -1,58 +1,85 @@
 'use server';
 
-// Type declarations for missing modules
-declare const NextResponse: any;
+import { NextRequest, NextResponse } from 'next/server';
 
 // Type interfaces
-interface NextRequest {
-  json(): Promise<any>;
-  headers: {
-    get(name: string): string | null;
+interface PushSubscription {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
   };
-  url: string;
+  expirationTime?: number | null;
+}
+
+interface SubscriptionPayload {
+  subscription: PushSubscription;
+  userId: string;
+  isIOSSafari?: boolean;
+  userAgent?: string;
+  oldEndpoint?: string;
 }
 
 // Import fallbacks
 const buildSubscriptionId = (endpoint: string): string => endpoint.replace(/\//g, '_');
-const normalizeSubscriptionPayload = (data: any) => data;
+const normalizeSubscriptionPayload = (data: SubscriptionPayload) => data;
 
-// Mock NextResponse for compilation
-const mockNextResponse = {
-  json: (data: any, options?: any) => ({ data, options })
-};
+// Type declarations for Firebase Admin
+interface FirebaseAdmin {
+  apps: { length: number };
+  initializeApp: (config?: unknown) => unknown;
+  firestore: () => FirestoreInstance;
+}
 
-// Use mock if real module not available
-const NextRes = typeof NextResponse !== 'undefined' ? NextResponse : mockNextResponse;
+interface FirestoreInstance {
+  collection: (path: string) => CollectionReference;
+}
 
-// Type declarations for missing modules
-declare const admin: any;
-declare const FieldValue: any;
+interface CollectionReference {
+  doc: (id: string) => DocumentReference;
+}
 
-// Mock admin and FieldValue for compilation
-const mockAdmin = {
+interface DocumentReference {
+  collection: (subPath: string) => CollectionReference;
+  set: (data: Record<string, unknown>, options?: { merge?: boolean }) => Promise<void>;
+  delete: () => Promise<void>;
+  update: (data: Record<string, unknown>) => Promise<void>;
+}
+
+interface FieldValueType {
+  serverTimestamp: () => unknown;
+}
+
+// Mock implementations for compilation
+const mockAdmin: FirebaseAdmin = {
   apps: { length: 0 },
   initializeApp: () => ({}),
   firestore: () => ({
-    collection: (path: string) => ({
-      doc: (id: string) => ({
-        collection: (subPath: string) => ({
-          doc: (subId: string) => ({
-            set: async (data: any, options?: any) => ({}),
+    collection: () => ({
+      doc: () => ({
+        collection: () => ({
+          doc: () => ({
+            set: async () => ({}),
             delete: async () => ({}),
-            update: async (data: any) => ({})
+            update: async () => ({})
           }),
-          get: async () => ({ docs: [], empty: true })
-        })
+        }),
+        set: async () => ({}),
+        delete: async () => ({}),
+        update: async () => ({})
       })
     })
   })
 };
 
-const mockFieldValue = {
+const mockFieldValue: FieldValueType = {
   serverTimestamp: () => new Date()
 };
 
-// Use mocks if real modules not available
+// Use mock if real module not available
+declare const admin: FirebaseAdmin | undefined;
+declare const FieldValue: FieldValueType | undefined;
+
 const firebaseAdmin = typeof admin !== 'undefined' ? admin : mockAdmin;
 const firestoreFieldValue = typeof FieldValue !== 'undefined' ? FieldValue : mockFieldValue;
 
