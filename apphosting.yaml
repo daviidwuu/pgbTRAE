@@ -1,6 +1,9 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# Specifies the region where your App Hosting backend is located.
+location: asia-southeast1
+
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.

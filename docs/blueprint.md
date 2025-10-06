@@ -1,18 +1,19 @@
-# **App Name**: PWA Starter
+# **App Name**: FinTrack Mini
 
 ## Core Features:
 
-- Basic UI Layout: Simple layout optimized for iOS PWA experience with essential UI elements.
-- Add to Home Screen Prompt: Prompt user to add the PWA to their iOS home screen.
-- Offline Support: Basic offline functionality using service workers.
-- Responsive Design: Ensure the app is fully responsive and adapts to different screen sizes.
+- Data Import: Import financial data from a Google Sheet using its URL, updating the dashboard automatically.
+- Telegram Bot Integration: Link the dashboard to a Telegram bot for automated notifications and updates.
+- Interactive Dashboard: Display financial data in a clear, interactive dashboard with charts and tables.
+- Mini App Compatibility: Ensure the dashboard is compatible with Telegram mini apps for seamless access.
+- Spending Analysis Tool: Use a generative AI tool to provide insights and recommendations on spending habits based on imported data. Use a generative AI tool to provide insights and recommendations on spending habits based on imported data.
 
 ## Style Guidelines:
 
-- Primary color: Light sea green (#20B2AA), evokes feelings of calmness and reliability, reflecting the simplicity of the application.
-- Background color: Very light green (#F0FAF9), offering a clean and unobtrusive backdrop that complements the primary color.
-- Accent color: Forest green (#228B22), chosen for a fresh analogous touch to highlight important actions.
-- Font: 'PT Sans', a humanist sans-serif for clear readability and a modern feel, suitable for both headers and body.
-- Simple, flat icons relevant to core functionalities. Icons should be easily recognizable.
-- Clean, single-column layout for ease of navigation and focused content presentation.
-- Subtle transitions and animations to enhance user experience, such as fade-in effects when content loads.
+- Primary color: Black (#000000) for a clean, minimalist look.
+- Background color: Dark gray (#333333) to provide a subtle contrast against the black primary color.
+- Chart colors: Shades of green (#4CAF50, #81C784) to represent financial data and growth.
+- Body and headline font: 'Roboto', a clean and readable sans-serif font suitable for dashboards.
+- Use minimalist white icons representing financial categories, ensuring visibility against the dark background.
+- Dashboard layout with clear sections and subtle dividers to organize data effectively within the dark theme.
+- Subtle, smooth transitions and animations when updating dashboard data, enhancing the user experience without being distracting.

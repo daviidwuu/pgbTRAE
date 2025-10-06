@@ -1,0 +1,112 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the piggybank application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's name."
+        },
+        "categories": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "User-defined spending categories."
+        },
+        "income": {
+          "type": "number",
+          "description": "The user's monthly income."
+        },
+        "savings": {
+          "type": "number",
+          "description": "The user's monthly savings goal."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a single financial transaction.",
+      "properties": {
+        "Date": { "type": "string", "format": "date-time" },
+        "Amount": { "type": "number" },
+        "Type": { "type": "string", "enum": ["Expense", "Income"] },
+        "Category": { "type": "string" },
+        "Notes": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["Date", "Amount", "Type", "Category", "Notes", "userId"]
+    },
+    "Budget": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Budget",
+        "type": "object",
+        "description": "Represents a budget for a specific category.",
+        "properties": {
+            "Category": { "type": "string" },
+            "MonthlyBudget": { "type": "number" }
+        },
+        "required": ["Category", "MonthlyBudget"]
+    },
+    "PushSubscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PushSubscription",
+      "type": "object",
+      "description": "Represents a web push subscription for a user's device.",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "keys": {
+          "type": "object",
+          "properties": {
+            "p256dh": { "type": "string" },
+            "auth": { "type": "string" }
+          },
+          "required": ["p256dh", "auth"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["endpoint", "keys"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profile data. Only the authenticated user can access their own document."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Stores individual transactions for a user. Only the user can access their own transactions."
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/Budget" },
+      "description": "Stores budget configurations for a user. Only the user can access their own budgets."
+    },
+    "/users/{userId}/pushSubscriptions/{subscriptionId}": {
+      "schema": { "$ref": "#/entities/PushSubscription" },
+      "description": "Stores push notification subscriptions for a user's devices. Only the user can manage their own subscriptions."
+    }
+  }
+}

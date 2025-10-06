@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['"PT Sans"', 'sans-serif'],
-        headline: ['"PT Sans"', 'sans-serif'],
+        body: ['var(--font-roboto)', 'sans-serif'],
+        headline: ['var(--font-roboto)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -68,8 +68,8 @@ export default {
       },
       borderRadius: {
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        md: 'calc(var(--radius) - 8px)',
+        sm: 'calc(var(--radius) - 16px)',
       },
       keyframes: {
         'accordion-down': {
