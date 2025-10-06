@@ -9,6 +9,17 @@ const withPWA = require('next-pwa')({
   sw: 'sw.js',
   swSrc: 'public/sw.js',
   scope: '/',
+  // Exclude large files and development assets from precaching
+  exclude: [
+    /\.map$/,
+    /manifest$/,
+    /\.DS_Store$/,
+    /_buildManifest\.js$/,
+    /_ssgManifest\.js$/,
+    /\.js\.map$/,
+    /\.css\.map$/,
+    /^build-manifest\.json$/,
+  ],
 });
 
 const nextConfig: NextConfig = {

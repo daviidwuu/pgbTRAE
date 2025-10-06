@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import { Roboto } from 'next/font/google';
+import React from 'react';
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { PWAServiceWorkerRegistration } from "./pwa-registration";
+import { performanceMonitor } from "@/lib/performance-monitor";
+import { backgroundSyncManager } from "@/lib/background-sync";
+import { iosOptimizations } from "@/lib/ios-optimizations";
+import { lazyLoadingManager } from "@/lib/lazy-loading";
+import { analyticsMonitor } from "@/lib/analytics-monitor";
+import { advancedPushNotifications } from "@/lib/advanced-push-notifications";
 
 const roboto = Roboto({
   subsets: ['latin'],
@@ -36,9 +43,19 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  // Initialize all optimization systems
+  React.useEffect(() => {
+    performanceMonitor.init();
+    backgroundSyncManager.init();
+    iosOptimizations.init();
+    lazyLoadingManager.init();
+    analyticsMonitor.init();
+    advancedPushNotifications.init();
+  }, []);
+
   return (
     <html lang="en" className="dark">
       <head>
