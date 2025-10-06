@@ -1,0 +1,24 @@
+{
+  "name": "PWA Starter",
+  "short_name": "PWA Starter",
+  "description": "A simple iOS PWA starter application.",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#20B2AA",
+  "background_color": "#F0FAF9",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait"
+}
