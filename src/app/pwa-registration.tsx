@@ -9,15 +9,25 @@ import { useEffect } from 'react';
  */
 export function PWAServiceWorkerRegistration() {
   useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+    if ('serviceWorker' in navigator) {
+      // Register service worker in both development and production
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
         .then((registration) => {
-          console.log('Service Worker registered with scope:', registration.scope);
+          console.log('✅ Service Worker registered with scope:', registration.scope);
+          console.log('Service Worker state:', registration.active?.state);
+          
+          // Wait for service worker to be ready
+          return navigator.serviceWorker.ready;
+        })
+        .then((registration) => {
+          console.log('✅ Service Worker is ready:', registration);
         })
         .catch((error) => {
-          console.error('Service Worker registration failed:', error);
+          console.error('❌ Service Worker registration failed:', error);
         });
+    } else {
+      console.warn('⚠️ Service Worker not supported in this browser');
     }
   }, []);
 

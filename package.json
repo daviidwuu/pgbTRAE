@@ -5,9 +5,14 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "NODE_ENV=production next build",
+    "build:firebase": "NODE_ENV=production next build && firebase deploy --only hosting",
+    "export": "next export",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate-manifest": "node scripts/generate-manifest.js",
+    "firebase:deploy": "npm run build && firebase deploy --only hosting",
+    "firebase:preview": "npm run build && firebase hosting:channel:deploy preview"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.0.0",
@@ -42,6 +47,7 @@
     "firebase-admin": "^12.1.0",
     "genkit": "^1.0.0",
     "lucide-react": "^0.475.0",
+    "minimatch": "^9.0.5",
     "next": "15.3.3",
     "next-pwa": "^5.6.0",
     "patch-package": "^8.0.0",

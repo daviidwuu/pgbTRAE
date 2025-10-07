@@ -51,14 +51,28 @@ export function TransactionsTable({
   onEdit,
   onDelete 
 }: TransactionsTableProps) {
-  const formatDate = (dateValue: { seconds: number; nanoseconds: number; } | null) => {
+  const formatDate = (dateValue: { seconds: number; nanoseconds: number; } | string | null) => {
     if (dateValue === null) {
         return { date: 'Invalid', time: 'Date' };
     }
-    const date = toDate(dateValue.seconds * 1000);
+    
+    let date: Date;
+    
+    // Handle both Firestore Timestamp format and ISO string format
+    if (typeof dateValue === 'string') {
+      // ISO string format (from older transactions)
+      date = new Date(dateValue);
+    } else if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+      // Firestore Timestamp format
+      date = toDate(dateValue.seconds * 1000);
+    } else {
+      return { date: 'Invalid', time: 'Date' };
+    }
+    
     if (isNaN(date.getTime())) {
       return { date: 'Invalid', time: 'Date' };
     }
+    
     return {
         date: format(date, 'dd/MM'),
         time: format(date, 'HH:mm'),

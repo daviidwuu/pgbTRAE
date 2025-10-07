@@ -233,6 +233,31 @@ export function Dashboard() {
   );
   const { data: transactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
+  // Debug logging for transactions
+  useEffect(() => {
+    console.log('Transactions debug:', {
+      user: !!user,
+      userId: user?.uid,
+      firestore: !!firestore,
+      transactionsQuery: !!transactionsQuery,
+      transactions: transactions,
+      transactionsLength: transactions?.length,
+      isTransactionsLoading,
+    });
+    
+    // Log individual transaction date formats for debugging
+    if (transactions && transactions.length > 0) {
+      console.log('Transaction date formats:', transactions.map(t => ({
+        id: t.id,
+        dateType: typeof t.Date,
+        dateValue: t.Date,
+        category: t.Category,
+        amount: t.Amount,
+        type: t.Type
+      })));
+    }
+  }, [user, firestore, transactionsQuery, transactions, isTransactionsLoading]);
+
   const budgetsQuery = useMemoFirebase(
     () => (firestore && user ? collection(firestore, `users/${user.uid}/budgets`) : null),
     [firestore, user]
@@ -248,13 +273,22 @@ export function Dashboard() {
   useEffect(() => {
     const checkSubscription = async () => {
       if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log('[Push Debug] Service worker or PushManager not supported');
         return;
       }
 
+      console.log('[Push Debug] Checking notification permission:', Notification.permission);
+      console.log('[Push Debug] Checking existing subscription...');
+      
       const sub = await getSubscription();
+      console.log('[Push Debug] Current subscription:', sub ? 'Found' : 'None');
+      
       setIsPushSubscribed(!!sub);
       const promptShown = localStorage.getItem(NOTIFICATION_PROMPT_KEY);
+      console.log('[Push Debug] Prompt previously shown:', promptShown);
+      
       if (!promptShown && !sub) {
+        console.log('[Push Debug] Showing notification prompt');
         setShowNotificationPrompt(true);
       }
     };
@@ -265,25 +299,66 @@ export function Dashboard() {
   useEffect(() => {
     if (typeof window === 'undefined' || !user || !firestore) return;
 
+    // @ts-ignore - Firebase Firestore type compatibility
     void syncSubscriptionWithFirestore(user.uid, firestore);
   }, [user, firestore]);
   
   const handleSetupSave = async (data: { name: string }) => {
-    if (!userDocRef || !firestore || !user) return;
-    const newUserData = {
-      name: data.name,
-      categories: defaultCategories,
-      income: 0,
-      savings: 0,
-    };
-    await setDoc(userDocRef, newUserData, { merge: true });
+    console.log('handleSetupSave called with:', data);
+    console.log('Current state:', { userDocRef: !!userDocRef, firestore: !!firestore, user: !!user });
+    
+    if (!userDocRef || !firestore || !user) {
+      console.log('Missing dependencies, returning early');
+      return;
+    }
+    
+    try {
+      console.log('Creating user data...');
+      const newUserData = {
+        userId: user.uid, // Required by Firestore rules
+        name: data.name,
+        categories: defaultCategories,
+        income: 0,
+        savings: 0,
+        createdAt: new Date(), // Required by Firestore rules
+        updatedAt: new Date()
+      };
+      
+      console.log('Saving user document:', newUserData);
+      await setDoc(userDocRef, newUserData, { merge: true });
+      console.log('User document saved successfully');
 
-    const budgetsCollection = collection(firestore, `users/${user.uid}/budgets`);
-    const budgetPromises = defaultCategories.map(category =>
-      setDoc(doc(budgetsCollection, category), { Category: category, MonthlyBudget: 0 }, { merge: true })
-    );
-    await Promise.all(budgetPromises);
-    setBudgetOpen(true);
+      const budgetsCollection = collection(firestore, `users/${user.uid}/budgets`);
+      const budgetPromises = defaultCategories.map(category =>
+        setDoc(doc(budgetsCollection, category), { 
+          category: category, 
+          amount: 0, 
+          period: 'monthly',
+          userId: user.uid,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }, { merge: true })
+      );
+      
+      console.log('Saving budget documents...');
+      await Promise.all(budgetPromises);
+      console.log('Budget documents saved successfully');
+      
+      toast({
+        title: "Setup Complete!",
+        description: "Your profile has been created successfully.",
+      });
+      
+      console.log('Setup completed, opening budget dialog');
+      setBudgetOpen(true);
+    } catch (error) {
+      console.error('Setup save error:', error);
+      toast({
+        title: "Setup Error",
+        description: "Failed to save your profile. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleCopyUserId = () => {
@@ -374,6 +449,9 @@ export function Dashboard() {
   };
 
   const handleNotificationToggle = async (checked: boolean) => {
+    console.log('[Push Debug] Toggle clicked:', checked);
+    console.log('[Push Debug] Current permission:', Notification.permission);
+    
     if (checked) {
         await handleAllowNotifications();
     } else {
@@ -382,37 +460,98 @@ export function Dashboard() {
   };
 
   const handleAllowNotifications = async () => {
-    if (!user || !firestore || typeof window === 'undefined') return;
+    console.log('[Push Debug] handleAllowNotifications called');
+    
+    if (!user || !firestore || typeof window === 'undefined') {
+      console.log('[Push Debug] Missing requirements:', { user: !!user, firestore: !!firestore, window: typeof window !== 'undefined' });
+      return;
+    }
 
     localStorage.setItem(NOTIFICATION_PROMPT_KEY, 'true');
     setShowNotificationPrompt(false);
 
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isStandalone = 'standalone' in window.navigator && (window.navigator as any).standalone;
+    const isStandalone = (navigator as any).standalone === true || 
+      window.matchMedia('(display-mode: standalone)').matches;
+    
+    console.log('[Push Debug] Device info:', { 
+      isIos, 
+      isStandalone, 
+      userAgent: navigator.userAgent.substring(0, 100),
+      notificationPermission: Notification.permission
+    });
 
     if (isIos && !isStandalone) {
+        console.log('[Push Debug] iOS device not in standalone mode, showing PWA instructions');
         setShowIosPwaInstructions(true);
         return;
     }
 
+    console.log('[Push Debug] Attempting to request notification permission...');
     setIsPushSubscribed(true);
     try {
-        await requestNotificationPermission(user.uid, firestore);
+        // @ts-ignore - Firebase Firestore type compatibility
+        const subscription = await requestNotificationPermission(user.uid, firestore);
+        
+        if (subscription) {
+          console.log('[Push Debug] Subscription successful:', {
+            endpoint: subscription.endpoint.substring(0, 50) + '...',
+            hasKeys: !!(subscription.toJSON().keys?.auth && subscription.toJSON().keys?.p256dh)
+          });
+          setIsPushSubscribed(true);
+          
+          // Test notification after successful subscription
+          if (isIos) {
+            console.log('[Push Debug] Testing notification on iOS...');
+            try {
+              // Use Firebase Functions endpoint instead of API route
+              const testResponse = await fetch('https://us-central1-piggybankpwa.cloudfunctions.net/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  UserID: user.uid,
+                  Data: {
+                    Amount: 0.01,
+                    Category: 'Test',
+                    Notes: 'iOS notification test',
+                    Type: 'expense'
+                  }
+                })
+              });
+              const testResult = await testResponse.json();
+              console.log('[Push Debug] Test notification result:', testResult);
+            } catch (testError) {
+              console.error('[Push Debug] Test notification failed:', testError);
+            }
+          }
+        }
+        
+        console.log('[Push Debug] Notification permission request successful');
     } catch (error) {
-        console.error("Failed to subscribe:", error);
+        console.error("[Push Debug] Failed to subscribe:", error);
         setIsPushSubscribed(false);
+        
+        // Show more helpful error message for iOS
+        if (isIos) {
+          alert(`iOS Notification Setup Failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nTips:\n1. Make sure this PWA is added to your home screen\n2. Check Safari Settings > Notifications\n3. Try refreshing and enabling again`);
+        }
     }
   };
 
   const handleDenyNotifications = async (fromToggle = false) => {
+    console.log('[Push Debug] handleDenyNotifications called, fromToggle:', fromToggle);
+    
     localStorage.setItem(NOTIFICATION_PROMPT_KEY, 'true');
     setShowNotificationPrompt(false);
     if (fromToggle && user && firestore) {
+        console.log('[Push Debug] Unsubscribing from notifications...');
         setIsPushSubscribed(false);
         try {
+            // @ts-ignore - Firebase Firestore type compatibility
             await unsubscribeFromNotifications(user.uid, firestore);
+            console.log('[Push Debug] Successfully unsubscribed');
         } catch (error) {
-            console.error("Failed to unsubscribe:", error);
+            console.error("[Push Debug] Failed to unsubscribe:", error);
             setIsPushSubscribed(true);
         }
     }
@@ -458,8 +597,24 @@ export function Dashboard() {
 
         if (!oldestLoaded || !mostRecentLoaded) return "All Time";
         
-        const oldestDate = toDate(oldestLoaded.seconds * 1000);
-        const mostRecentDate = toDate(mostRecentLoaded.seconds * 1000);
+        // Handle both date formats
+        let oldestDate: Date, mostRecentDate: Date;
+        
+        if (typeof oldestLoaded === 'string') {
+          oldestDate = new Date(oldestLoaded);
+        } else if (oldestLoaded && typeof oldestLoaded === 'object' && 'seconds' in oldestLoaded) {
+          oldestDate = toDate(oldestLoaded.seconds * 1000);
+        } else {
+          return "All Time";
+        }
+        
+        if (typeof mostRecentLoaded === 'string') {
+          mostRecentDate = new Date(mostRecentLoaded);
+        } else if (mostRecentLoaded && typeof mostRecentLoaded === 'object' && 'seconds' in mostRecentLoaded) {
+          mostRecentDate = toDate(mostRecentLoaded.seconds * 1000);
+        } else {
+          return "All Time";
+        }
 
         if (isNaN(oldestDate.getTime()) || isNaN(mostRecentDate.getTime())) return "All Time";
         
@@ -483,7 +638,16 @@ export function Dashboard() {
 
     return transactions.filter(t => {
       if (!t.Date) return false;
-      const transactionDate = toDate(t.Date.seconds * 1000);
+      
+      let transactionDate: Date;
+      if (typeof t.Date === 'string') {
+        transactionDate = new Date(t.Date);
+      } else if (t.Date && typeof t.Date === 'object' && 'seconds' in t.Date) {
+        transactionDate = toDate(t.Date.seconds * 1000);
+      } else {
+        return false;
+      }
+      
       if (isNaN(transactionDate.getTime())) return false;
       
       const isAfterStart = transactionDate >= start;
@@ -511,7 +675,16 @@ export function Dashboard() {
          if (!transactions || transactions.length === 0) return monthlyBudget;
         const oldestLoaded = transactions[transactions.length - 1]?.Date;
         if (!oldestLoaded) return monthlyBudget;
-        const oldestDate = toDate(oldestLoaded.seconds * 1000);
+        
+        let oldestDate: Date;
+        if (typeof oldestLoaded === 'string') {
+          oldestDate = new Date(oldestLoaded);
+        } else if (oldestLoaded && typeof oldestLoaded === 'object' && 'seconds' in oldestLoaded) {
+          oldestDate = toDate(oldestLoaded.seconds * 1000);
+        } else {
+          return monthlyBudget;
+        }
+        
         const monthSpan = differenceInMonths(now, oldestDate) + 1;
         return monthlyBudget * Math.max(1, monthSpan);
       default:
@@ -520,7 +693,7 @@ export function Dashboard() {
   }, [finalUserData, dateRange, transactions]);
 
   const expenseTransactions = useMemo(() => 
-    filteredTransactions.filter(t => t.Type === 'Expense'),
+    filteredTransactions.filter(t => t.Type === 'expense' || t.Type === 'Expense'),
     [filteredTransactions]
   );
 
@@ -588,12 +761,49 @@ export function Dashboard() {
 
   const isLoading = isUserLoading || isUserDataLoading || (user && finalUserData !== null && (isTransactionsLoading || isBudgetsLoading));
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Dashboard state:', {
+      user: !!user,
+      userId: user?.uid,
+      finalUserData,
+      isUserDataLoading,
+      isUserLoading,
+      isLoading,
+      hasFirestore: !!firestore,
+      userDocRef: !!userDocRef
+    });
+  }, [user, finalUserData, isUserDataLoading, isUserLoading, isLoading, firestore, userDocRef]);
+
+  // If we're in static export mode and no Firebase services are available, show a message
+  if (typeof window !== 'undefined' && !firestore) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background items-center justify-center p-6">
+        <div className="w-full max-w-[428px] text-center space-y-4">
+          <h1 className="text-2xl font-bold">Firebase Setup Required</h1>
+          <p className="text-muted-foreground">
+            To use this app, you need to:
+          </p>
+          <div className="text-left space-y-2 bg-muted p-4 rounded-lg">
+            <p>1. Enable <strong>Authentication</strong> in Firebase Console</p>
+            <p>2. Create <strong>Firestore Database</strong> in Firebase Console</p>
+            <p>3. Enable <strong>Email/Password</strong> sign-in method</p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Visit: <a href="https://console.firebase.google.com/project/piggybankpwa" className="text-blue-500 underline" target="_blank" rel="noopener noreferrer">Firebase Console</a>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return <SkeletonLoader />;
   }
 
   // If user is authenticated but has no profile data (it's null after loading), show setup sheet
-  if (user && finalUserData === null) {
+  // Also check that we're not still loading user data
+  if (user && finalUserData === null && !isUserDataLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background items-center justify-center">
           <div className="w-full max-w-[428px] p-6">

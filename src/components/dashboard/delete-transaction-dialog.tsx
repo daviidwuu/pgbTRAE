@@ -30,7 +30,14 @@ export function DeleteTransactionDialog({ open, onOpenChange, onConfirm, transac
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the transaction:
             <br />
-            <span className="font-semibold">{transaction?.Notes}</span> for <span className="font-semibold">${transaction?.Amount.toFixed(2)}</span> on <span className="font-semibold">{transaction?.Date ? format(toDate(transaction.Date.seconds * 1000), 'MMM d, yyyy') : 'N/A'}</span>.
+            <span className="font-semibold">{transaction?.Notes}</span> for <span className="font-semibold">${transaction?.Amount.toFixed(2)}</span> on <span className="font-semibold">{transaction?.Date ? (() => {
+              if (typeof transaction.Date === 'string') {
+                return format(new Date(transaction.Date), 'MMM d, yyyy');
+              } else if (transaction.Date && typeof transaction.Date === 'object' && 'seconds' in transaction.Date) {
+                return format(toDate(transaction.Date.seconds * 1000), 'MMM d, yyyy');
+              }
+              return 'N/A';
+            })() : 'N/A'}</span>.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

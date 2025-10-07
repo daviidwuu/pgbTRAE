@@ -1,17 +1,14 @@
 
 'use client';
 
-// Type declarations for missing modules
-declare const collection: any;
-declare const doc: any;
-declare const setDoc: any;
-declare const deleteDoc: any;
-declare const serverTimestamp: any;
-
-// Type interfaces
-interface Firestore {
-  collection(path: string): any;
-}
+import { 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  collection, 
+  serverTimestamp,
+  type Firestore
+} from 'firebase/firestore';
 
 // Mock toast function
 const toast = (options: any) => console.log('Toast:', options);
@@ -24,19 +21,30 @@ declare global {
 }
 
 /**
- * iOS Safari Detection Utility
+ * iOS Safari Detection Utility - Enhanced for better detection
  */
 function isIOSSafari(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  
   const userAgent = navigator.userAgent || '';
-  return /iPad|iPhone|iPod/.test(userAgent) && /Safari/.test(userAgent) && !/CriOS|FxiOS/.test(userAgent);
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+  const isSafari = /Safari/.test(userAgent) && !/CriOS|FxiOS|EdgiOS/.test(userAgent);
+  
+  // Check for standalone mode (PWA)
+  const isStandalone = navigator.standalone === true || 
+    window.matchMedia('(display-mode: standalone)').matches;
+  
+  return isIOS && (isSafari || isStandalone);
 }
 
 /**
  * Enhanced logging for iOS push notification debugging
  */
 function logPushMessage(message: string, data?: any) {
-  const prefix = isIOSSafari() ? '[iOS Push]' : '[Push]';
+  // Avoid circular dependency by checking iOS status directly
+  const userAgent = navigator?.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+  const prefix = isIOS ? '[iOS Push]' : '[Push]';
   console.log(`${prefix} ${message}`, data);
 }
 
@@ -176,12 +184,14 @@ async function persistSubscription(userId: string, firestore: Firestore, subscri
     updatedAt: serverTimestamp(),
   };
 
-  await setDoc(subscriptionRef, subscriptionData);
+  // Use merge to preserve existing metadata like updatedAt from service worker
+  await setDoc(subscriptionRef, subscriptionData, { merge: true });
   
   logPushMessage('Subscription persisted to Firestore', {
     userId,
-    endpoint: normalized.endpoint,
-    isIOSSafari: subscriptionData.isIOSSafari
+    endpoint: normalized.endpoint.substring(0, 50) + "...",
+    isIOSSafari: subscriptionData.isIOSSafari,
+    docId: buildSubscriptionId(normalized.endpoint)
   });
 }
 
@@ -248,7 +258,10 @@ async function subscribeWithRegistration(
   userId: string,
   firestore: Firestore
 ) {
-  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  // Use the same VAPID key as the server for consistency
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 
+    'BGOvmY_FbbGPUZ4LrujnuHDN5NgkF_LRF1sfQJgCbFeLjKkJR3JXy1DnTh_FlHJCjOj-lZYkkrTdCbUXtWTAEPI';
+  
   if (!vapidPublicKey) {
     throw new Error('VAPID public key not configured.');
   }
@@ -330,44 +343,72 @@ export async function requestNotificationPermission(userId: string, firestore: F
     throw new Error('Notifications are not supported in this browser.');
   }
 
+  const isIOS = isIOSSafari();
+  
   logPushMessage('Requesting notification permission', { 
     currentPermission: Notification.permission,
-    isIOSSafari: isIOSSafari()
+    isIOSSafari: isIOS,
+    isPWAInstalled: isPWAInstalled(),
+    userAgent: navigator.userAgent.substring(0, 100)
   });
 
   // Check if already granted
   if (Notification.permission === 'granted') {
-    logPushMessage('Permission already granted');
+    logPushMessage('Permission already granted, ensuring active subscription');
     return ensureActiveSubscription(userId, firestore);
+  }
+
+  // For iOS, provide specific guidance
+  if (isIOS && Notification.permission === 'default') {
+    logPushMessage('iOS detected - requesting permission with user gesture');
+    
+    // Ensure this is called from a user gesture
+    if (!document.hasFocus()) {
+      logPushMessage('Warning: Permission request not from user gesture');
+    }
   }
 
   // Request permission
   const permission = await Notification.requestPermission();
   
-  logPushMessage('Permission request result', { permission });
+  logPushMessage('Permission request result', { 
+    permission,
+    isIOS,
+    timestamp: Date.now()
+  });
 
   if (permission === 'granted') {
     toast({
       title: "Notifications enabled",
-      description: "You'll receive notifications for new transactions.",
+      description: isIOS 
+        ? "Great! You'll receive notifications for new transactions. Make sure this PWA is added to your home screen for best experience."
+        : "You'll receive notifications for new transactions.",
     });
     
     return ensureActiveSubscription(userId, firestore);
   } else if (permission === 'denied') {
+    const errorMessage = isIOS 
+      ? "To enable notifications, go to Safari Settings > Notifications and allow notifications for this site, or check your device's notification settings."
+      : "Notifications have been blocked. Please enable them in your browser settings.";
+      
     toast({
       variant: "destructive",
       title: "Notifications blocked",
-      description: isIOSSafari() 
-        ? "To enable notifications, go to Safari Settings > Notifications and allow notifications for this site."
-        : "Notifications have been blocked. Please enable them in your browser settings.",
+      description: errorMessage,
     });
+    
+    logPushMessage('Permission denied', { isIOS, permission });
     throw new Error('Notification permission denied.');
   } else {
     toast({
       variant: "destructive",
       title: "Notifications not available",
-      description: "Notification permission was not granted.",
+      description: isIOS 
+        ? "Notification permission was not granted. Try again and make sure to allow notifications when prompted."
+        : "Notification permission was not granted.",
     });
+    
+    logPushMessage('Permission not granted', { isIOS, permission });
     throw new Error('Notification permission not granted.');
   }
 }

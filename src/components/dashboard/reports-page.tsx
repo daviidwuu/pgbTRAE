@@ -67,7 +67,16 @@ export function ReportsPage({ allTransactions, categories }: ReportsPageProps) {
 
     const filtered = allTransactions.filter(t => {
       if (!t.Date) return false;
-      const transactionDate = toDate(t.Date.seconds * 1000);
+      
+      let transactionDate: Date;
+      if (typeof t.Date === 'string') {
+        transactionDate = new Date(t.Date);
+      } else if (t.Date && typeof t.Date === 'object' && 'seconds' in t.Date) {
+        transactionDate = toDate(t.Date.seconds * 1000);
+      } else {
+        return false;
+      }
+      
       return transactionDate >= dateRange.start! && transactionDate <= dateRange.end!;
     });
 

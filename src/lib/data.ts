@@ -1,7 +1,7 @@
 
 export interface Transaction {
   id: string;
-  Date: { seconds: number; nanoseconds: number; } | null;
+  Date: { seconds: number; nanoseconds: number; } | string | null;
   Amount: number;
   Type: string;
   Category: string;
