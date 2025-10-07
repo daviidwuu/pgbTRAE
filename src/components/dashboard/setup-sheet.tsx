@@ -111,7 +111,7 @@ export function SetupSheet({ onSave, onCopyUserId, userId }: SetupSheetProps) {
               <div className="w-full space-y-2">
                 <p className="text-sm text-muted-foreground">2. Add the Shortcut to your iPhone:</p>
                 <Button asChild className="w-full">
-                    <Link href="https://www.icloud.com/shortcuts/df270514bb1a48ee8ff5bcaa9e685df3" target="_blank">
+                    <Link href="https://www.icloud.com/shortcuts/af9c743c8ad04fe9adb4dc2d2b4a0927" target="_blank">
                         <LinkIcon className="mr-2 h-4 w-4" />
                         Add Apple Shortcut
                     </Link>
