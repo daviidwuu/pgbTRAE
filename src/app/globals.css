@@ -3,37 +3,33 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Roboto', sans-serif;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142.1 76% 36%;
-    --primary-foreground: 355.7 100% 97.3%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 210 40% 9%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 210 40% 35%;
-    --accent: 142.1 76% 36%;
-    --accent-foreground: 210 40% 9%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 142.1 76% 36%;
-    --chart-1: 210 40% 50%;
-    --chart-2: 150 40% 50%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --radius: 2.0rem;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -41,63 +37,114 @@ body {
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 217.2 10.6% 64.9%;
+    
+    /* Dynamic viewport height for mobile keyboard handling */
+    --viewport-height: 100vh;
   }
+
   .dark {
-    --background: 0 0% 0%; /* Black */
-    --foreground: 0 0% 100%; /* White */
-    --card: 240 1% 7%; /* Darker Gray */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 4% 10%;
+    --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 142.1 76% 36%; /* Green */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 4% 15%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 15%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 142.1 76% 46%; /* Brighter Green */
-    --accent-foreground: 0 0% 100%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 15%;
-    --input: 240 4% 15%;
-    --ring: 142.1 76% 46%;
-    --chart-1: 140 70% 50%; /* Green shade 1 */
-    --chart-2: 150 60% 40%; /* Green shade 2 */
-    --chart-3: 130 80% 30%; /* Green shade 3 */
-    --chart-4: 160 65% 45%; /* Green shade 4 */
-    --chart-5: 145 75% 55%; /* Green shade 5 */
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 224.3 76.3% 94.1%;
+    --sidebar-primary-foreground: 240 5.9% 10%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 217.2 10.6% 64.9%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
-    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Hide number input spinners */
-/* For Chrome, Safari, Edge, Opera */
-input[type=number]::-webkit-outer-spin-button,
-input[type=number]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+/* iOS-specific optimizations for virtual keyboard handling */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific styles */
+  
+  /* Prevent drawer from flying out when keyboard appears */
+  .keyboard-open [data-vaul-drawer-wrapper] {
+    transform: none !important;
+  }
+  
+  .keyboard-open [data-vaul-drawer] {
+    position: fixed !important;
+    bottom: 0 !important;
+    transform: none !important;
+    height: auto !important;
+    max-height: var(--viewport-height) !important;
+  }
+  
+  /* Ensure drawer content is scrollable when keyboard is open */
+  .keyboard-open [data-vaul-drawer] .overflow-y-auto,
+  .keyboard-open [data-vaul-drawer] [data-radix-scroll-area-viewport] {
+    max-height: calc(var(--viewport-height) - 120px) !important;
+  }
+  
+  /* Prevent body scroll when drawer is open and keyboard is visible */
+  .keyboard-open body {
+    position: fixed;
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  /* Fix for input focus in drawers */
+  .keyboard-open input:focus,
+  .keyboard-open textarea:focus {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
 }
 
-/* For Firefox */
-input[type=number] {
-  -moz-appearance: textfield;
+/* Additional mobile optimizations */
+@media (max-width: 768px) {
+  /* Use dynamic viewport height */
+  .min-h-screen {
+    min-height: var(--viewport-height);
+  }
+  
+  .h-screen {
+    height: var(--viewport-height);
+  }
+  
+  /* Drawer specific optimizations */
+  [data-vaul-drawer] {
+    max-height: var(--viewport-height);
+  }
+  
+  /* Ensure proper scrolling in mobile drawers */
+  [data-vaul-drawer] .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
 }

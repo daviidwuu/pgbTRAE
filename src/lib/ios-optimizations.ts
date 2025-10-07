@@ -29,11 +29,11 @@ export class IOSOptimizations {
   optimizeViewport(): void {
     if (!this.isIOSSafari()) return;
 
-    // Prevent zoom on input focus
+    // Prevent zoom on input focus and handle virtual keyboard
     const viewportMeta = document.querySelector('meta[name="viewport"]');
     if (viewportMeta) {
       viewportMeta.setAttribute('content', 
-        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+        'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content'
       );
     }
 
@@ -42,6 +42,61 @@ export class IOSOptimizations {
     document.documentElement.style.setProperty('--ios-safe-area-bottom', 'env(safe-area-inset-bottom)');
     document.documentElement.style.setProperty('--ios-safe-area-left', 'env(safe-area-inset-left)');
     document.documentElement.style.setProperty('--ios-safe-area-right', 'env(safe-area-inset-right)');
+
+    // Handle virtual keyboard appearance
+    this.handleVirtualKeyboard();
+  }
+
+  // Handle virtual keyboard behavior on iOS
+  private handleVirtualKeyboard(): void {
+    if (!this.isIOSSafari()) return;
+
+    // Use Visual Viewport API if available
+    if ('visualViewport' in window && window.visualViewport) {
+      const visualViewport = window.visualViewport;
+      
+      const handleViewportChange = () => {
+        // Update CSS custom property for dynamic viewport height
+        document.documentElement.style.setProperty(
+          '--viewport-height', 
+          `${visualViewport.height}px`
+        );
+        
+        // Add class to body when keyboard is open
+        const keyboardOpen = visualViewport.height < window.innerHeight * 0.75;
+        document.body.classList.toggle('keyboard-open', keyboardOpen);
+      };
+
+      visualViewport.addEventListener('resize', handleViewportChange);
+      visualViewport.addEventListener('scroll', handleViewportChange);
+      
+      // Initial call
+      handleViewportChange();
+    } else {
+      // Fallback for older iOS versions
+      let initialViewportHeight = window.innerHeight;
+      
+      const handleResize = () => {
+        const currentHeight = window.innerHeight;
+        const keyboardOpen = currentHeight < initialViewportHeight * 0.75;
+        document.body.classList.toggle('keyboard-open', keyboardOpen);
+        
+        document.documentElement.style.setProperty(
+          '--viewport-height', 
+          `${currentHeight}px`
+        );
+      };
+
+      window.addEventListener('resize', handleResize);
+      
+      // Update initial height on orientation change
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+          initialViewportHeight = window.innerHeight;
+          handleResize();
+        }, 500);
+      });
+    }
   }
 
   // Optimize touch interactions for iOS

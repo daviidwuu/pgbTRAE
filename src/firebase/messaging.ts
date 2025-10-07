@@ -381,15 +381,15 @@ export async function requestNotificationPermission(userId: string, firestore: F
     toast({
       title: "Notifications enabled",
       description: isIOS 
-        ? "Great! You'll receive notifications for new transactions. Make sure this PWA is added to your home screen for best experience."
-        : "You'll receive notifications for new transactions.",
+        ? "Excellent! You'll receive instant notifications for all financial activities. For the best experience, ensure PiggyBank is added to your home screen."
+        : "Perfect! You'll receive real-time notifications for all your financial transactions.",
     });
     
     return ensureActiveSubscription(userId, firestore);
   } else if (permission === 'denied') {
     const errorMessage = isIOS 
-      ? "To enable notifications, go to Safari Settings > Notifications and allow notifications for this site, or check your device's notification settings."
-      : "Notifications have been blocked. Please enable them in your browser settings.";
+      ? "To enable notifications, please go to Safari Settings > Notifications and allow notifications for this site, or check your device's notification settings."
+      : "Notifications have been blocked. Please enable them in your browser settings to receive transaction alerts.";
       
     toast({
       variant: "destructive",
@@ -404,8 +404,8 @@ export async function requestNotificationPermission(userId: string, firestore: F
       variant: "destructive",
       title: "Notifications not available",
       description: isIOS 
-        ? "Notification permission was not granted. Try again and make sure to allow notifications when prompted."
-        : "Notification permission was not granted.",
+        ? "Notification permission was not granted. Please try again and allow notifications when prompted to stay updated on your financial activity."
+        : "Notification permission was not granted. Please try again to receive transaction updates.",
     });
     
     logPushMessage('Permission not granted', { isIOS, permission });
@@ -440,7 +440,7 @@ export async function unsubscribeFromNotifications(userId: string, firestore: Fi
       
       toast({
         title: "Notifications disabled",
-        description: "You will no longer receive push notifications.",
+        description: "You will no longer receive push notifications for financial activities. You can re-enable them anytime in settings.",
       });
     } else {
       logPushMessage('No active subscription to unsubscribe');

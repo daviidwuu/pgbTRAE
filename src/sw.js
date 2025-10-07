@@ -241,14 +241,14 @@ self.addEventListener('fetch', (event) => {
       logPushEvent('Push data parsed', data);
     } catch (error) {
       logPushEvent('Failed to parse push data', { error });
-      data = { title: 'Finance Tracker', body: 'New notification' };
+      data = { title: 'PiggyBank', body: 'You have a new financial update' };
     }
     
     const notificationOptions = {
-      body: data.body || 'New transaction recorded',
+      body: data.body || 'Your financial activity has been updated',
       icon: '/icon.png',
       badge: '/icon.png',
-      tag: 'finance-tracker-notification',
+      tag: 'piggybank-notification',
       requireInteraction: false,
       silent: false,
       data: {
@@ -260,11 +260,11 @@ self.addEventListener('fetch', (event) => {
     
     if (isIOSSafari()) {
       notificationOptions.actions = [
-        { action: 'view', title: 'View Transaction' }
+        { action: 'view', title: 'View Details' }
       ];
     }
     
-    const title = data.title || 'Finance Tracker';
+    const title = data.title || 'PiggyBank';
     logPushEvent('Showing notification', { title, options: notificationOptions });
     
     event.waitUntil(

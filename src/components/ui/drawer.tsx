@@ -44,9 +44,19 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[var(--radius)] bg-background pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[var(--radius)] bg-background",
+        // Fix for mobile keyboard: use viewport units and safe area insets
+        "max-h-[100dvh] pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+        // Prevent drawer from flying out when keyboard appears
+        "transform-none",
         className
       )}
+      style={{
+        // Ensure drawer stays in place when virtual keyboard appears
+        position: 'fixed',
+        bottom: 0,
+        transform: 'none',
+      }}
       {...props}
     >
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />

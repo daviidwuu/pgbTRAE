@@ -384,9 +384,21 @@ export const transactions = onRequest({
 
     // Send push notification
     try {
+      // Create professional notification message
+      const transactionType = Type === "expense" ? "Expense" : "Income";
+      const formattedAmount = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(Amount);
+
+      const title = `${transactionType} Recorded`;
+      const body = `${formattedAmount} transaction in ${Category}${
+        Notes ? ` - ${Notes}` : ""
+      }`;
+
       await sendPushNotification(UserID, {
-        title: "Transaction Added",
-        body: `${Type === "expense" ? "-" : "+"}$${Amount} - ${Category}`,
+        title,
+        body,
         data: {
           transactionId: transactionRef.id,
           amount: Amount.toString(),
