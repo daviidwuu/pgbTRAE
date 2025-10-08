@@ -14,11 +14,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/shared/hooks";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { addDocumentNonBlocking, useFirestore, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
-import { type Transaction } from "@/lib/data";
+import { type Transaction } from "@/shared/types";
 import { DrawerHeader, DrawerTitle } from "../ui/drawer";
 
 const formSchema = z.object({

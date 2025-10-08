@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import type { Transaction } from "@/lib/data";
+import type { Transaction } from "@/shared/types";
 import { ChartConfig } from "../ui/chart";
 import { format, toDate } from 'date-fns';
 import { Button } from "../ui/button";

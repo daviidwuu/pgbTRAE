@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from "@/shared/hooks";
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { 

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { type Budget, type User } from "@/lib/data";
+import { type Budget, type User } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -207,7 +207,7 @@ export function BudgetPage({
                         </div>
                         <ScrollArea className="h-64 mt-4">
                             <div className="space-y-2 px-4">
-                                {categories.map((category) => (
+                                {categories.map((category: string) => (
                                     <div key={category} className="flex items-center justify-between rounded-md border p-3">
                                         <span className="font-medium text-sm">{category}</span>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDeleteCategory(category)}>
@@ -237,7 +237,7 @@ export function BudgetPage({
                     )}
                 </Drawer>
                 <div className="space-y-3 pt-2">
-                    {categories.map((category) => (
+                    {categories.map((category: string) => (
                         <button 
                             key={category} 
                             onClick={() => setEditingCategory(category)}

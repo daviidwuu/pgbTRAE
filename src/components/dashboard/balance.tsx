@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/utils";
 import { Button } from "../ui/button";
 import { ChevronDown } from "lucide-react";
 import { type ChartConfig } from "../ui/chart";

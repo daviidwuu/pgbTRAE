@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { type Transaction, type Budget, type User as UserData } from "@/lib/data";
+import { type Transaction, type Budget, type User as UserData } from "@/shared/types";
+import { type DateRange } from "@/components/dashboard/date-filter";
 import { Balance } from "@/components/dashboard/balance";
 import { TransactionsTable } from "@/components/dashboard/transactions-table";
-import { type DateRange } from "@/components/dashboard/date-filter";
 import type { AddTransactionFormProps } from "@/components/dashboard/add-transaction-form";
 import type { BudgetPageProps } from "@/components/dashboard/budget-page";
 import type { ReportsPageProps } from "@/components/dashboard/reports-page";
@@ -15,7 +15,6 @@ import type { NotificationPermissionDialogProps } from "@/components/dashboard/n
 import type { DeleteTransactionDialogProps } from "@/components/dashboard/delete-transaction-dialog";
 import type { UserSettingsDialogProps } from "@/components/dashboard/user-settings-dialog";
 import { type ChartConfig } from "@/components/ui/chart";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format, getDaysInMonth, differenceInMonths } from 'date-fns';
 import {
   Drawer,
   DrawerContent,
@@ -44,7 +43,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, Settings, Wallet, User as UserIcon, LogOut, FileText, Bell, Smartphone } from "lucide-react";
 import { SkeletonLoader } from "@/components/dashboard/skeleton-loader";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/shared/hooks";
 import { useAuth, useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import { doc, collection, setDoc, query, orderBy, limit } from 'firebase/firestore';
 import { signOut } from "firebase/auth";
@@ -55,11 +54,19 @@ import {
   getSubscription,
   syncSubscriptionWithFirestore,
 } from "@/firebase/messaging";
-import { toDate } from "date-fns";
+import { toDate, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format, getDaysInMonth, differenceInMonths } from "date-fns";
 import { useRouter } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 
+// Import from new feature-based structure
+import { useTransactions } from "@/features/transactions/hooks";
+import { useBudgets } from "@/features/budgets/hooks";
+import { useUserProfile } from "@/features/auth/hooks";
+import { useNotifications, useDashboardState } from "@/features/dashboard/hooks";
+
+// Constants
+import { CHART_COLORS } from "@/shared/constants";
 
 export type SortOption = 'latest' | 'highest' | 'category';
 
@@ -196,16 +203,11 @@ const NOTIFICATION_PROMPT_KEY = 'notificationPromptShown';
 
 export function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange>('month');
-  const [visibleTransactions, setVisibleTransactions] = useState(20);
-  const [sortOption, setSortOption] = useState<SortOption>('latest');
   
   const [isAddTransactionOpen, setAddTransactionOpen] = useState(false);
   const [isBudgetOpen, setBudgetOpen] = useState(false);
   const [isReportsOpen, setReportsOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
-
-  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   
   const [showIosPwaInstructions, setShowIosPwaInstructions] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -227,36 +229,30 @@ export function Dashboard() {
   );
   const { data: userData, isLoading: isUserDataLoading } = useDoc<UserData>(userDocRef);
 
-  const transactionsQuery = useMemoFirebase(
-    () => (firestore && user ? query(collection(firestore, `users/${user.uid}/transactions`), orderBy('Date', 'desc'), limit(visibleTransactions)) : null),
-    [firestore, user, visibleTransactions]
-  );
-  const { data: transactions, isLoading: isTransactionsLoading } = useCollection<Transaction>(transactionsQuery);
-
-  // Debug logging for transactions
-  useEffect(() => {
-    console.log('Transactions debug:', {
-      user: !!user,
-      userId: user?.uid,
-      firestore: !!firestore,
-      transactionsQuery: !!transactionsQuery,
-      transactions: transactions,
-      transactionsLength: transactions?.length,
-      isTransactionsLoading,
-    });
-    
-    // Log individual transaction date formats for debugging
-    if (transactions && transactions.length > 0) {
-      console.log('Transaction date formats:', transactions.map(t => ({
-        id: t.id,
-        dateType: typeof t.Date,
-        dateValue: t.Date,
-        category: t.Category,
-        amount: t.Amount,
-        type: t.Type
-      })));
-    }
-  }, [user, firestore, transactionsQuery, transactions, isTransactionsLoading]);
+  // Use the transactions hook with dateRange
+  const {
+    transactions,
+    allTransactions,
+    isTransactionsLoading,
+    isAllTransactionsLoading,
+    visibleTransactions,
+    sortOption,
+    transactionToEdit,
+    transactionToDelete,
+    setVisibleTransactions,
+    setSortOption,
+    setTransactionToEdit,
+    setTransactionToDelete,
+    handleEditClick,
+    handleDeleteClick,
+    handleConfirmDelete,
+    loadMoreTransactions,
+    getFilteredTransactions,
+    getSortedTransactions,
+    getExpenseTransactions,
+    getTotalSpent,
+    getAggregatedData,
+  } = useTransactions(dateRange);
 
   const budgetsQuery = useMemoFirebase(
     () => (firestore && user ? collection(firestore, `users/${user.uid}/budgets`) : null),
@@ -366,22 +362,6 @@ export function Dashboard() {
     navigator.clipboard.writeText(user.uid);
   };
 
-  const handleEditClick = (transaction: Transaction) => {
-    setTransactionToEdit(transaction);
-    setAddTransactionOpen(true);
-  };
-  
-  const handleDeleteClick = (transaction: Transaction) => {
-    setTransactionToDelete(transaction);
-  };
-
-  const handleConfirmDelete = () => {
-    if (!transactionToDelete || !user || !firestore) return;
-    const docRef = doc(firestore, `users/${user.uid}/transactions`, transactionToDelete.id);
-    deleteDocumentNonBlocking(docRef);
-    setTransactionToDelete(null);
-  };
-
   const handleUpdateIncome = (newIncome: number) => {
     if (!userDocRef) return;
     updateDocumentNonBlocking(userDocRef, { income: newIncome });
@@ -408,7 +388,7 @@ export function Dashboard() {
 
   const handleDeleteCategory = (category: string) => {
     if (!userDocRef || !user || !firestore || !finalUserData) return;
-    const updatedCategories = (finalUserData.categories || []).filter(c => c !== category);
+    const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
     updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
 
     const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
@@ -627,35 +607,11 @@ export function Dashboard() {
     setDisplayDate(getDisplayDate(dateRange));
   }, [dateRange, getDisplayDate, isClient]);
 
-  const filteredTransactions = useMemo(() => {
-    if (!transactions) return [];
-
-    const { start, end } = dateFilterRange;
-
-    if (dateRange === 'all' || !start || !end) {
-      return transactions;
-    }
-
-    return transactions.filter(t => {
-      if (!t.Date) return false;
-      
-      let transactionDate: Date;
-      if (typeof t.Date === 'string') {
-        transactionDate = new Date(t.Date);
-      } else if (t.Date && typeof t.Date === 'object' && 'seconds' in t.Date) {
-        transactionDate = toDate(t.Date.seconds * 1000);
-      } else {
-        return false;
-      }
-      
-      if (isNaN(transactionDate.getTime())) return false;
-      
-      const isAfterStart = transactionDate >= start;
-      const isBeforeEnd = transactionDate <= end;
-      
-      return isAfterStart && isBeforeEnd;
-    });
-  }, [transactions, dateRange, dateFilterRange]);
+  // Calculate filtered transactions using ALL transactions for accurate totals
+  const filteredTransactions = useMemo(() => 
+    getFilteredTransactions(dateRange, true), // Use all transactions for accurate filtering
+    [getFilteredTransactions, dateRange]
+  );
   
   const totalBudget = useMemo(() => {
     if (!finalUserData) return 0;
@@ -693,39 +649,27 @@ export function Dashboard() {
   }, [finalUserData, dateRange, transactions]);
 
   const expenseTransactions = useMemo(() => 
-    filteredTransactions.filter(t => t.Type === 'expense' || t.Type === 'Expense'),
-    [filteredTransactions]
+    getExpenseTransactions(filteredTransactions),
+    [getExpenseTransactions, filteredTransactions]
   );
 
   const totalSpent = useMemo(() => 
-    expenseTransactions.reduce((sum, t) => sum + t.Amount, 0),
-    [expenseTransactions]
+    getTotalSpent(expenseTransactions),
+    [getTotalSpent, expenseTransactions]
   );
 
   const categories = finalUserData?.categories || [];
   const categoryColors = useMemo(() => {
-    return categories.reduce((acc, category, index) => {
+    return categories.reduce((acc: Record<string, string>, category: string, index: number) => {
       acc[category] = chartColors[index % chartColors.length];
       return acc;
     }, {} as Record<string, string>);
   }, [categories]);
 
-  const aggregatedData = useMemo(() => expenseTransactions
-    .reduce((acc, transaction) => {
-      const existingCategory = acc.find(
-        (item) => item.category === transaction.Category
-      );
-      if (existingCategory) {
-        existingCategory.amount += transaction.Amount;
-      } else {
-        acc.push({
-          category: transaction.Category,
-          amount: transaction.Amount,
-        });
-      }
-      return acc;
-    }, [] as { category: string; amount: number }[])
-    .sort((a, b) => b.amount - a.amount), [expenseTransactions]);
+  const aggregatedData = useMemo(() => 
+    getAggregatedData(expenseTransactions),
+    [getAggregatedData, expenseTransactions]
+  );
 
   const chartConfig = useMemo(() => {
     return Object.keys(categoryColors).reduce((acc, category) => {
@@ -738,19 +682,10 @@ export function Dashboard() {
   }, [categoryColors]);
 
   const sortedTransactions = useMemo(() => {
-    if (!expenseTransactions) return [];
-    const sorted = [...expenseTransactions];
-    switch (sortOption) {
-      case 'highest':
-        return sorted.sort((a, b) => b.Amount - a.Amount);
-      case 'category':
-        return sorted.sort((a, b) => a.Category.localeCompare(b.Category));
-      case 'latest':
-      default:
-        // Data is already sorted by date descending from Firestore
-        return sorted;
-    }
-  }, [expenseTransactions, sortOption]);
+    // Use limited transactions for display, but filtered by date range
+    const displayTransactions = getFilteredTransactions(dateRange, false); // Use limited transactions for display
+    return getSortedTransactions(displayTransactions);
+  }, [getFilteredTransactions, getSortedTransactions, dateRange]);
 
   useEffect(() => {
     // When the dialog closes, reset the transaction to edit
@@ -759,7 +694,7 @@ export function Dashboard() {
     }
   }, [isAddTransactionOpen]);
 
-  const isLoading = isUserLoading || isUserDataLoading || (user && finalUserData !== null && (isTransactionsLoading || isBudgetsLoading));
+  const isLoading = isUserLoading || isUserDataLoading || (user && finalUserData !== null && (isTransactionsLoading || isAllTransactionsLoading || isBudgetsLoading));
 
   // Debug logging
   useEffect(() => {

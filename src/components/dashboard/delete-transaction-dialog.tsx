@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { type Transaction } from "@/lib/data";
+import { type Transaction } from "@/shared/types";
 import { format, toDate } from "date-fns";
 
 export interface DeleteTransactionDialogProps {

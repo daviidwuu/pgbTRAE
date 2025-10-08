@@ -25,7 +25,7 @@ import {
   } from "@/components/ui/card";
 import { Loader2, Copy, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/shared/hooks";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Please enter your name." }),

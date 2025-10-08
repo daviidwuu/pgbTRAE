@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { type Transaction } from "@/lib/data";
+import { type Transaction } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import {
   Select,

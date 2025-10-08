@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { type User as UserData } from "@/lib/data";
+import { type User as UserData } from "@/shared/types";
 import { Loader2, Copy } from "lucide-react";
 
 const formSchema = z.object({
