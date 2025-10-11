@@ -79,6 +79,20 @@ export function TransactionsTable({
     };
   };
 
+  // Helper function to determine if transaction is income
+  const isIncomeTransaction = (transaction: Transaction): boolean => {
+    return transaction.Type === 'income';
+  };
+
+  // Helper function to get transaction styling
+  const getTransactionStyling = (transaction: Transaction) => {
+    const isIncome = isIncomeTransaction(transaction);
+    return {
+      prefix: isIncome ? '+' : '-',
+      prefixColor: isIncome ? 'text-green-600' : 'text-red-600',
+    };
+  };
+
   const sortOptions: { label: string; value: SortOption }[] = [
     { label: "Latest", value: "latest" },
     { label: "Highest Amount", value: "highest" },
@@ -130,28 +144,37 @@ export function TransactionsTable({
               <TableBody>
                 {data.map((transaction) => {
                     const { date, time } = formatDate(transaction.Date);
+                    const styling = getTransactionStyling(transaction);
+                    const isIncome = isIncomeTransaction(transaction);
+                    
                     return (
                       <TableRow key={transaction.id} className="border-b-0">
-                        <TableCell className="font-medium text-xs p-1 pl-0">
+                        <TableCell className="font-medium text-sm p-1 pl-0">
                             <div>{date}</div>
                             <div className="text-muted-foreground">{time}</div>
                         </TableCell>
                         <TableCell className="p-1">
                           <div className="flex items-center gap-2">
                              <Badge
-                              className="whitespace-nowrap px-1.5 py-0.5 font-semibold text-xs"
-                              style={{
-                                backgroundColor: chartConfig[transaction.Category]?.color ? `${chartConfig[transaction.Category]?.color}20` : '#88888820',
-                                color: chartConfig[transaction.Category]?.color || '#888888',
-                              }}
+                              className={`whitespace-nowrap px-1.5 py-0.5 font-semibold text-sm ${
+                                isIncome 
+                                  ? 'border border-green-500 text-green-700 bg-transparent' 
+                                  : 'border'
+                              }`}
+                              style={!isIncome ? {
+                                backgroundColor: chartConfig[transaction.Category]?.color ? `${chartConfig[transaction.Category]?.color}20` : '#fee2e2',
+                                color: chartConfig[transaction.Category]?.color || '#dc2626',
+                                borderColor: chartConfig[transaction.Category]?.color || '#dc2626',
+                              } : undefined}
                             >
                               {transaction.Category}
                             </Badge>
-                            <span className="font-medium truncate block max-w-[120px] text-sm">{transaction.Notes}</span>
+                            <span className="font-medium truncate block max-w-[120px] text-base">{transaction.Notes}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium text-sm p-1 text-right">
-                          <div className="flex items-center justify-end">
+                        <TableCell className="font-medium text-base p-1 text-right">
+                          <div className={`flex items-center justify-end gap-1 ${styling.prefixColor}`}>
+                            <span>{styling.prefix}</span>
                             <span>$</span>
                             <span>{transaction.Amount.toFixed(2)}</span>
                           </div>

@@ -98,32 +98,15 @@ export function useNotifications() {
         const subscription = await requestNotificationPermission(user.uid, firestore);
         
         if (subscription) {
-          console.log('[Push Debug] Subscription successful:', {
-            endpoint: subscription.endpoint.substring(0, 50) + '...',
-            hasKeys: !!(subscription.toJSON().keys?.auth && subscription.toJSON().keys?.p256dh)
-          });
-          
-          toast({
-            title: "Notifications Enabled!",
-            description: "You'll receive push notifications for important updates.",
-          });
+          console.log('[Push Debug] Subscription successful');
+          setIsPushSubscribed(true);
         } else {
           console.log('[Push Debug] Subscription failed or was denied');
           setIsPushSubscribed(false);
-          toast({
-            variant: "destructive",
-            title: "Notifications Blocked",
-            description: "Please enable notifications in your browser settings.",
-          });
         }
     } catch (error) {
         console.error('[Push Debug] Error requesting notification permission:', error);
         setIsPushSubscribed(false);
-        toast({
-          variant: "destructive",
-          title: "Notification Error",
-          description: "Failed to enable notifications. Please try again.",
-        });
     }
   };
 
@@ -139,19 +122,8 @@ export function useNotifications() {
             // @ts-ignore - Firebase Firestore type compatibility
             await unsubscribeFromNotifications(user.uid, firestore);
             setIsPushSubscribed(false);
-            console.log('[Push Debug] Successfully unsubscribed');
-            
-            toast({
-              title: "Notifications Disabled",
-              description: "You won't receive push notifications anymore.",
-            });
         } catch (error) {
             console.error('[Push Debug] Error unsubscribing:', error);
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Failed to disable notifications. Please try again.",
-            });
         }
     }
   };

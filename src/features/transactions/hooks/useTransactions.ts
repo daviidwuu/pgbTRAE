@@ -119,11 +119,25 @@ export function useTransactions(dateRange: DateRange = 'month') {
   };
 
   const getExpenseTransactions = (filteredTransactions: Transaction[]) => {
-    return filteredTransactions.filter(t => t.Type === 'expense' || t.Type === 'Expense');
+    return filteredTransactions.filter(t => t.Type === 'expense');
+  };
+
+  const getIncomeTransactions = (filteredTransactions: Transaction[]) => {
+    return filteredTransactions.filter(t => t.Type === 'income');
   };
 
   const getTotalSpent = (expenseTransactions: Transaction[]) => {
     return expenseTransactions.reduce((sum, t) => sum + t.Amount, 0);
+  };
+
+  const getTotalIncome = (incomeTransactions: Transaction[]) => {
+    return incomeTransactions.reduce((sum, t) => sum + t.Amount, 0);
+  };
+
+  const getNetIncome = (filteredTransactions: Transaction[]) => {
+    const income = getTotalIncome(getIncomeTransactions(filteredTransactions));
+    const expenses = getTotalSpent(getExpenseTransactions(filteredTransactions));
+    return income - expenses;
   };
 
   const getAggregatedData = (expenseTransactions: Transaction[]) => {
@@ -191,7 +205,10 @@ export function useTransactions(dateRange: DateRange = 'month') {
     getFilteredTransactions,
     getSortedTransactions,
     getExpenseTransactions,
+    getIncomeTransactions,
     getTotalSpent,
+    getTotalIncome,
+    getNetIncome,
     getAggregatedData,
   };
 }

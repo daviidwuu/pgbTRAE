@@ -6,10 +6,9 @@ import { signOut } from "firebase/auth";
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/shared/hooks";
+import { DEFAULT_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from "@/shared/constants";
 
-const defaultCategories = [
-  "F&B", "Shopping", "Transport", "Bills",
-];
+const defaultCategories = DEFAULT_CATEGORIES;
 
 const USER_ID_COPIED_KEY = 'userIdCopied';
 
@@ -43,30 +42,18 @@ export function useUserProfile() {
     });
   }, [user, userData, isUserDataLoading, isUserLoading, firestore, userDocRef]);
 
-  const handleSetupSave = async (data: { name: string }) => {
-    console.log('handleSetupSave called with:', data);
-    console.log('Current state:', { userDocRef: !!userDocRef, firestore: !!firestore, user: !!user });
-    
-    if (!userDocRef || !firestore || !user) {
-      console.log('Missing dependencies, returning early');
-      return;
-    }
+  const setupUser = async (userData: { name: string; income: number; savings: number }): Promise<boolean> => {
+    if (!user || !firestore) return false;
     
     try {
-      console.log('Creating user data...');
-      const newUserData = {
-        userId: user.uid, // Required by Firestore rules
-        name: data.name,
+      const userRef = doc(firestore, 'users', user.uid);
+      await setDoc(userRef, {
+        ...userData,
         categories: defaultCategories,
-        income: 0,
-        savings: 0,
-        createdAt: new Date(), // Required by Firestore rules
+        incomeCategories: DEFAULT_INCOME_CATEGORIES,
+        createdAt: new Date(),
         updatedAt: new Date()
-      };
-      
-      console.log('Saving user document:', newUserData);
-      await setDoc(userDocRef, newUserData, { merge: true });
-      console.log('User document saved successfully');
+      });
 
       const budgetsCollection = collection(firestore, `users/${user.uid}/budgets`);
       const budgetPromises = defaultCategories.map(category =>
@@ -77,27 +64,15 @@ export function useUserProfile() {
           userId: user.uid,
           createdAt: new Date(),
           updatedAt: new Date()
-        }, { merge: true })
+        })
       );
       
-      console.log('Saving budget documents...');
       await Promise.all(budgetPromises);
-      console.log('Budget documents saved successfully');
-      
-      toast({
-        title: "Setup Complete!",
-        description: "Your profile has been created successfully.",
-      });
       
       console.log('Setup completed');
       return true;
     } catch (error) {
       console.error('Setup save error:', error);
-      toast({
-        title: "Setup Error",
-        description: "Failed to save your profile. Please try again.",
-        variant: "destructive",
-      });
       return false;
     }
   };
@@ -111,10 +86,6 @@ export function useUserProfile() {
     if (!user) return;
     navigator.clipboard.writeText(user.uid);
     localStorage.setItem(USER_ID_COPIED_KEY, 'true');
-    toast({
-        title: "User ID Copied!",
-        description: "You can now paste this into your Apple Shortcut.",
-    });
   };
 
   const handleUpdateUser = (name: string) => {
@@ -156,7 +127,7 @@ export function useUserProfile() {
     // Actions
     setUserSettingsOpen,
     setShowLogoutConfirm,
-    handleSetupSave,
+    setupUser,
     handleCopyUserId,
     handleCopyUserIdToast,
     handleUpdateUser,

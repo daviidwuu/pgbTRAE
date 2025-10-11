@@ -205,7 +205,7 @@ export function BudgetPage({
                                 </Button>
                             </div>
                         </div>
-                        <ScrollArea className="h-64 mt-4">
+                        <ScrollArea className="h-64 mt-4 scrollbar-hide">
                             <div className="space-y-2 px-4">
                                 {categories.map((category: string) => (
                                     <div key={category} className="flex items-center justify-between rounded-md border p-3">

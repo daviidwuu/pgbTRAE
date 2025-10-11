@@ -10,6 +10,7 @@ import { TransactionsTable } from "@/components/dashboard/transactions-table";
 import type { AddTransactionFormProps } from "@/components/dashboard/add-transaction-form";
 import type { BudgetPageProps } from "@/components/dashboard/budget-page";
 import type { ReportsPageProps } from "@/components/dashboard/reports-page";
+import type { RecurringTransactionsPageProps } from "@/components/dashboard/recurring-transactions-page";
 import type { SetupSheetProps } from "@/components/dashboard/setup-sheet";
 import type { NotificationPermissionDialogProps } from "@/components/dashboard/notification-permission-dialog";
 import type { DeleteTransactionDialogProps } from "@/components/dashboard/delete-transaction-dialog";
@@ -41,7 +42,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Settings, Wallet, User as UserIcon, LogOut, FileText, Bell, Smartphone } from "lucide-react";
+import { Plus, Settings, Wallet, User as UserIcon, LogOut, FileText, Bell, Smartphone, Repeat } from "lucide-react";
 import { SkeletonLoader } from "@/components/dashboard/skeleton-loader";
 import { useToast } from "@/shared/hooks";
 import { useAuth, useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
@@ -66,12 +67,12 @@ import { useUserProfile } from "@/features/auth/hooks";
 import { useNotifications, useDashboardState } from "@/features/dashboard/hooks";
 
 // Constants
-import { CHART_COLORS } from "@/shared/constants";
+import { CHART_COLORS, DEFAULT_INCOME_CATEGORIES } from "@/shared/constants";
 
 export type SortOption = 'latest' | 'highest' | 'category';
 
 const chartColors = [
-  "#2563eb", "#f97316", "#22c55e", "#ef4444", "#8b5cf6",
+  "#2563eb", "#f97316", "#6366f1", "#ef4444", "#8b5cf6",
   "#78350f", "#ec4899", "#64748b", "#f59e0b"
 ];
 
@@ -115,6 +116,14 @@ const ReportsPage = dynamic<ReportsPageProps>(
   () =>
     import("@/components/dashboard/reports-page").then(
       (mod) => mod.ReportsPage
+    ),
+  { loading: DrawerContentFallback, ssr: false }
+);
+
+const RecurringTransactionsPage = dynamic<RecurringTransactionsPageProps>(
+  () =>
+    import("@/components/dashboard/recurring-transactions-page").then(
+      (mod) => mod.RecurringTransactionsPage
     ),
   { loading: DrawerContentFallback, ssr: false }
 );
@@ -207,6 +216,7 @@ export function Dashboard() {
   const [isAddTransactionOpen, setAddTransactionOpen] = useState(false);
   const [isBudgetOpen, setBudgetOpen] = useState(false);
   const [isReportsOpen, setReportsOpen] = useState(false);
+  const [isRecurringOpen, setRecurringOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   
   const [showIosPwaInstructions, setShowIosPwaInstructions] = useState(false);
@@ -250,7 +260,10 @@ export function Dashboard() {
     getFilteredTransactions,
     getSortedTransactions,
     getExpenseTransactions,
+    getIncomeTransactions,
     getTotalSpent,
+    getTotalIncome,
+    getNetIncome,
     getAggregatedData,
   } = useTransactions(dateRange);
 
@@ -299,61 +312,25 @@ export function Dashboard() {
     void syncSubscriptionWithFirestore(user.uid, firestore);
   }, [user, firestore]);
   
-  const handleSetupSave = async (data: { name: string }) => {
-    console.log('handleSetupSave called with:', data);
-    console.log('Current state:', { userDocRef: !!userDocRef, firestore: !!firestore, user: !!user });
-    
-    if (!userDocRef || !firestore || !user) {
-      console.log('Missing dependencies, returning early');
-      return;
-    }
-    
+  const handleSetupSave = async (userData: { name: string }) => {
     try {
-      console.log('Creating user data...');
-      const newUserData = {
-        userId: user.uid, // Required by Firestore rules
-        name: data.name,
+      if (!user || !firestore) return;
+      
+      const userRef = doc(firestore, 'users', user.uid);
+      await setDoc(userRef, {
+        ...userData,
         categories: defaultCategories,
+        incomeCategories: DEFAULT_INCOME_CATEGORIES,
         income: 0,
         savings: 0,
-        createdAt: new Date(), // Required by Firestore rules
-        updatedAt: new Date()
-      };
-      
-      console.log('Saving user document:', newUserData);
-      await setDoc(userDocRef, newUserData, { merge: true });
-      console.log('User document saved successfully');
-
-      const budgetsCollection = collection(firestore, `users/${user.uid}/budgets`);
-      const budgetPromises = defaultCategories.map(category =>
-        setDoc(doc(budgetsCollection, category), { 
-          category: category, 
-          amount: 0, 
-          period: 'monthly',
-          userId: user.uid,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }, { merge: true })
-      );
-      
-      console.log('Saving budget documents...');
-      await Promise.all(budgetPromises);
-      console.log('Budget documents saved successfully');
-      
-      toast({
-        title: "Setup Complete!",
-        description: "Your profile has been created successfully.",
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       
       console.log('Setup completed, opening budget dialog');
       setBudgetOpen(true);
     } catch (error) {
       console.error('Setup save error:', error);
-      toast({
-        title: "Setup Error",
-        description: "Failed to save your profile. Please try again.",
-        variant: "destructive",
-      });
     }
   };
   
@@ -422,10 +399,6 @@ export function Dashboard() {
     if (!user) return;
     navigator.clipboard.writeText(user.uid);
     localStorage.setItem(USER_ID_COPIED_KEY, 'true');
-    toast({
-        title: "User ID Copied!",
-        description: "You can now paste this into your Apple Shortcut.",
-    });
   };
 
   const handleNotificationToggle = async (checked: boolean) => {
@@ -653,12 +626,28 @@ export function Dashboard() {
     [getExpenseTransactions, filteredTransactions]
   );
 
+  const incomeTransactions = useMemo(() => 
+    getIncomeTransactions(filteredTransactions),
+    [getIncomeTransactions, filteredTransactions]
+  );
+
   const totalSpent = useMemo(() => 
     getTotalSpent(expenseTransactions),
     [getTotalSpent, expenseTransactions]
   );
 
+  const totalIncome = useMemo(() => 
+    getTotalIncome(incomeTransactions),
+    [getTotalIncome, incomeTransactions]
+  );
+
+  const netIncome = useMemo(() => 
+    getNetIncome(filteredTransactions),
+    [getNetIncome, filteredTransactions]
+  );
+
   const categories = finalUserData?.categories || [];
+  const incomeCategories = finalUserData?.incomeCategories || DEFAULT_INCOME_CATEGORIES;
   const categoryColors = useMemo(() => {
     return categories.reduce((acc: Record<string, string>, category: string, index: number) => {
       acc[category] = chartColors[index % chartColors.length];
@@ -752,13 +741,13 @@ export function Dashboard() {
     );
   }
 
-  if (!user || !finalUserData || transactions === undefined || budgets === undefined) {
+  if (!user || !finalUserData || transactions === undefined || budgets === undefined || allTransactions === undefined) {
     return <SkeletonLoader />;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background items-center">
-      <div className="w-full max-w-[428px] pt-[env(safe-area-inset-top)]">
+    <div className="flex flex-col min-h-screen bg-background items-center scrollbar-hide">
+      <div className="w-full max-w-[428px] pt-[env(safe-area-inset-top)] scrollbar-hide">
         <main className="flex-1 p-4 space-y-4 pb-[calc(env(safe-area-inset-bottom)+4rem)]">
           <NotificationPermissionDialog
               open={showNotificationPrompt}
@@ -788,6 +777,9 @@ export function Dashboard() {
            />
           <Dialog open={isUserSettingsOpen} onOpenChange={setUserSettingsOpen}>
             <DialogContent className="max-w-[400px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <DialogHeader>
+                  <DialogTitle>User Settings</DialogTitle>
+                </DialogHeader>
                 <UserSettingsDialog
                   user={finalUserData}
                   userId={user?.uid}
@@ -824,7 +816,7 @@ export function Dashboard() {
                        <DrawerHeader>
                         <DrawerTitle>Wallet</DrawerTitle>
                       </DrawerHeader>
-                      <ScrollArea className="h-[70vh]">
+                      <ScrollArea className="h-[70vh] scrollbar-hide">
                         <BudgetPage 
                           user={finalUserData}
                           budgets={budgets || []} 
@@ -884,6 +876,17 @@ export function Dashboard() {
                                       <p className="text-xs text-muted-foreground">Generate spending reports.</p>
                                   </div>
                                 </Button>
+                                <Button
+                                  variant="ghost"
+                                  className="justify-start p-4 h-auto"
+                                  onClick={() => { setSettingsOpen(false); setRecurringOpen(true); }}
+                                >
+                                  <Repeat className="mr-4 h-5 w-5" />
+                                  <div className="text-left">
+                                      <p className="font-semibold">Recurring Transactions</p>
+                                      <p className="text-xs text-muted-foreground">Manage automatic recurring payments.</p>
+                                  </div>
+                                </Button>
                                 <div className="flex items-center justify-between p-4 h-auto">
                                     <div className="flex items-center space-x-4">
                                       <Bell className="h-5 w-5" />
@@ -917,6 +920,8 @@ export function Dashboard() {
           
           <Balance
             totalSpending={totalSpent}
+            totalIncome={totalIncome}
+            netIncome={netIncome}
             budget={totalBudget}
             aggregatedData={aggregatedData}
             chartConfig={chartConfig}
@@ -952,6 +957,7 @@ export function Dashboard() {
                   setOpen={setAddTransactionOpen}
                   transactionToEdit={transactionToEdit}
                   categories={categories}
+                  incomeCategories={incomeCategories}
                 />
             </DrawerContent>
         </Drawer>
@@ -959,6 +965,12 @@ export function Dashboard() {
         <Drawer open={isReportsOpen} onOpenChange={setReportsOpen}>
           <DrawerContent>
             <ReportsPage allTransactions={transactions || []} categories={categories} />
+          </DrawerContent>
+        </Drawer>
+
+        <Drawer open={isRecurringOpen} onOpenChange={setRecurringOpen}>
+          <DrawerContent>
+            <RecurringTransactionsPage categories={categories} incomeCategories={incomeCategories} />
           </DrawerContent>
         </Drawer>
 

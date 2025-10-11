@@ -1,11 +1,12 @@
 import { doc, setDoc, type Firestore } from 'firebase/firestore';
 import { type User as UserData } from "@/shared/types";
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { DEFAULT_CATEGORIES } from "@/shared/constants";
+import { DEFAULT_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from "@/shared/constants";
 
 export interface CreateUserDto {
   name: string;
   categories?: string[];
+  incomeCategories?: string[];
   income?: number;
   savings?: number;
 }
@@ -30,6 +31,7 @@ export class UserService {
       userId,
       name: userData.name,
       categories: userData.categories || DEFAULT_CATEGORIES,
+      incomeCategories: userData.incomeCategories || DEFAULT_INCOME_CATEGORIES,
       income: userData.income || 0,
       savings: userData.savings || 0,
       createdAt: new Date(),

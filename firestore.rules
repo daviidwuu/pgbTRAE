@@ -27,6 +27,11 @@ service cloud.firestore {
         allow read, write: if isSignedIn() && isOwner(userId);
       }
       
+      // User recurring transactions subcollection
+      match /recurringTransactions/{recurringId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
+      
       // User push subscriptions subcollection
       match /pushSubscriptions/{subscriptionId} {
         allow read, write: if isSignedIn() && isOwner(userId);

@@ -41,6 +41,12 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* iOS PWA Safe Area Variables */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
   }
   
   .dark {
@@ -89,6 +95,63 @@ body {
   }
 }
 
+/* iOS PWA Safe Area Support */
+@supports (padding: max(0px)) {
+  /* PWA-specific styles for iOS */
+  @media (display-mode: standalone) {
+    body {
+      padding-top: var(--safe-area-inset-top);
+      padding-bottom: var(--safe-area-inset-bottom);
+      padding-left: var(--safe-area-inset-left);
+      padding-right: var(--safe-area-inset-right);
+    }
+    
+    /* Drawer and Modal Safe Area Support */
+    [data-vaul-drawer] {
+      padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+    }
+    
+    [data-vaul-drawer-wrapper] {
+      padding-bottom: var(--safe-area-inset-bottom);
+    }
+    
+    /* Form containers in drawers */
+    .drawer-form-container {
+      padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+      min-height: calc(50vh - var(--safe-area-inset-bottom));
+    }
+    
+    /* Fixed buttons in forms */
+    .form-fixed-button {
+      padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+      margin-bottom: var(--safe-area-inset-bottom);
+    }
+  }
+}
+
+/* iOS-specific optimizations */
+@media screen and (max-width: 768px) {
+  /* Prevent zoom on input focus */
+  input[type="text"]:not(.amount-input),
+  input[type="number"]:not(.amount-input),
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* iOS PWA viewport adjustments */
+  @media (display-mode: standalone) {
+    .mobile-form-container {
+      height: calc(60vh - var(--safe-area-inset-bottom));
+      max-height: calc(600px - var(--safe-area-inset-bottom));
+      min-height: calc(400px - var(--safe-area-inset-bottom));
+    }
+  }
+}
+
 /* Hide number input spinners */
 /* For Chrome, Safari, Edge, Opera */
 input[type=number]::-webkit-outer-spin-button,
@@ -100,4 +163,39 @@ input[type=number]::-webkit-inner-spin-button {
 /* For Firefox */
 input[type=number] {
   -moz-appearance: textfield;
+}
+
+/* Scrollbar hiding utilities */
+.scrollbar-hide {
+  /* Hide scrollbar for IE, Edge and Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Hide scrollbar for webkit browsers */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thin scrollbar variant for better UX */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
 }

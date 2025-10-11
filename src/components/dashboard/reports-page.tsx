@@ -81,7 +81,7 @@ export function ReportsPage({ allTransactions, categories }: ReportsPageProps) {
     });
 
     const report = categories.map(category => {
-      const categoryTransactions = filtered.filter(t => t.Category === category && t.Type === 'Expense');
+      const categoryTransactions = filtered.filter(t => t.Category === category && t.Type === 'expense');
       return {
         category,
         amount: categoryTransactions.reduce((sum, t) => sum + t.Amount, 0),
@@ -103,7 +103,7 @@ export function ReportsPage({ allTransactions, categories }: ReportsPageProps) {
         <DrawerTitle>Generate Report</DrawerTitle>
       </DrawerHeader>
       <div className="h-[65vh] overflow-hidden">
-        <ScrollArea className="h-full px-4">
+        <ScrollArea className="h-full px-4 scrollbar-hide">
             <div className="space-y-6 pb-4">
                 <div className="grid grid-cols-2 gap-4">
                 <Select value={period} onValueChange={(value) => setPeriod(value as ReportPeriod)}>

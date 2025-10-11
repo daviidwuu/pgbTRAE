@@ -9,6 +9,11 @@ export const DEFAULT_CATEGORIES = [
   "F&B", "Shopping", "Transport", "Bills",
 ];
 
+// Default income categories for new users
+export const DEFAULT_INCOME_CATEGORIES = [
+  "Salary", "Transfer",
+];
+
 // Local storage keys
 export const STORAGE_KEYS = {
   USER_ID_COPIED: 'userIdCopied',

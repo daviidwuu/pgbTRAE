@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -12,12 +12,14 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/shared/utils";
 import { Button } from "../ui/button";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, TrendingUp, TrendingDown } from "lucide-react";
 import { type ChartConfig } from "../ui/chart";
 import { DateFilter, type DateRange } from "./date-filter";
 
 interface BalanceProps {
   totalSpending: number;
+  totalIncome: number;
+  netIncome: number;
   budget: number;
   aggregatedData: { category: string; amount: number }[];
   chartConfig: ChartConfig;
@@ -28,6 +30,8 @@ interface BalanceProps {
 
 export function Balance({
   totalSpending,
+  totalIncome,
+  netIncome,
   budget,
   aggregatedData,
   chartConfig,
@@ -36,16 +40,36 @@ export function Balance({
   displayDate
 }: BalanceProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showAmountLeft, setShowAmountLeft] = useState(() => {
+    // Load from localStorage or default to false
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('walletToggle') === 'true';
+    }
+    return false;
+  });
+
+  // Save toggle state to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('walletToggle', showAmountLeft.toString());
+    }
+  }, [showAmountLeft]);
+
   const spendingPercentage = budget > 0 ? (totalSpending / budget) * 100 : 0;
   const isOverBudget = spendingPercentage >= 100;
+  const amountLeft = budget - totalSpending;
+
+  const handleAmountClick = () => {
+    setShowAmountLeft(!showAmountLeft);
+  };
 
   return (
     <Card className="rounded-[var(--radius)]">
       <CardHeader>
         <div className="flex justify-between items-start">
             <div>
-                <CardTitle>Balance</CardTitle>
-                <CardDescription>Spending vs. budget.</CardDescription>
+                <CardTitle>Wallet</CardTitle>
+                <CardDescription>Your spending overview</CardDescription>
             </div>
             <div className="flex flex-col items-end gap-1">
                 <DateFilter value={dateRange} onValueChange={onDateRangeChange} />
@@ -55,37 +79,84 @@ export function Balance({
             </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2 pt-0">
-        <div className="flex justify-between items-baseline">
-          <div className="text-2xl font-bold text-foreground">
-            ${totalSpending.toFixed(2)}
-          </div>
-          <div className="text-base text-muted-foreground">
-            of ${budget.toFixed(2)}
-          </div>
-        </div>
-        <Progress
-          value={isOverBudget ? 100 : spendingPercentage}
-          className={cn("h-10", isOverBudget && "[&>div]:bg-destructive")}
-        />
-        {isExpanded && (
-          <div className="pt-2 space-y-2 animate-in fade-in-0">
-            {aggregatedData.map((item, index) => (
-              <div key={index} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: chartConfig[item.category]?.color }}
-                  />
-                  <span className="text-muted-foreground">{item.category}</span>
+      <CardContent className="space-y-4 pt-0">
+        {/* Budget Progress Bar */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-end">
+            <div className="text-left">
+              <button 
+                onClick={handleAmountClick}
+                className="focus:outline-none hover:opacity-80 transition-opacity"
+              >
+                <div className="text-3xl font-bold">
+                  {showAmountLeft ? (
+                    <>
+                      <span className="text-3xl font-bold">${amountLeft.toFixed(2)}</span>
+                      <span className="text-lg text-muted-foreground font-normal"> left</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-3xl font-bold">${totalSpending.toFixed(2)}</span>
+                      <span className="text-lg text-muted-foreground font-normal">/${budget.toFixed(2)}</span>
+                    </>
+                  )}
                 </div>
-                <span className="font-medium">
-                  ${item.amount.toFixed(2)}
-                </span>
+              </button>
+            </div>
+            <span className="text-sm text-muted-foreground">{spendingPercentage.toFixed(0)}%</span>
+          </div>
+          <Progress
+            value={isOverBudget ? 100 : spendingPercentage}
+            className={cn("h-10", isOverBudget && "[&>div]:bg-destructive")}
+          />
+        </div>
+
+        {/* Expandable Section */}
+        {isExpanded && (
+          <div className="pt-2 space-y-4 animate-in fade-in-0 border-t">
+            {/* Income and Expense Summary */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-base text-muted-foreground">
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  <span>Income</span>
+                </div>
+                <div className="text-2xl font-bold text-green-600">
+                  +${totalIncome.toFixed(2)}
+                </div>
               </div>
-            ))}
+              <div className="space-y-2 text-right">
+                <div className="flex items-center justify-end gap-2 text-base text-muted-foreground">
+                  <span>Expenses</span>
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                </div>
+                <div className="text-2xl font-bold text-red-600">
+                  -${totalSpending.toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            {/* Category Breakdown */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-muted-foreground">Expense Breakdown</span>
+              {aggregatedData.map((item, index) => (
+                <div key={index} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: chartConfig[item.category]?.color }}
+                    />
+                    <span className="text-muted-foreground">{item.category}</span>
+                  </div>
+                  <span className="font-medium">
+                    ${item.amount.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
+        
         <div className="flex justify-center pt-1">
           <Button
             variant="ghost"

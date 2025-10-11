@@ -47,8 +47,8 @@ const DrawerContent = React.forwardRef<
         "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[var(--radius)] bg-background",
         // Fix for mobile keyboard: use viewport units and safe area insets
         "max-h-[100dvh] pb-[calc(env(safe-area-inset-bottom)+1rem)]",
-        // Prevent drawer from flying out when keyboard appears
-        "transform-none",
+        // Prevent drawer from flying out when keyboard appears and ensure smooth return
+        "transform-none transition-transform duration-300 ease-out",
         className
       )}
       style={{
@@ -56,6 +56,8 @@ const DrawerContent = React.forwardRef<
         position: 'fixed',
         bottom: 0,
         transform: 'none',
+        // Add transition for smooth return to bottom when keyboard dismisses
+        transition: 'transform 0.3s ease-out',
       }}
       {...props}
     >
