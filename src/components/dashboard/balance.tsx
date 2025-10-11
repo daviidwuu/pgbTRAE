@@ -40,28 +40,58 @@ export function Balance({
   displayDate
 }: BalanceProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showAmountLeft, setShowAmountLeft] = useState(() => {
-    // Load from localStorage or default to false
+  const [viewMode, setViewMode] = useState<'spent' | 'left' | 'reality'>(() => {
+    // Load from localStorage or default to 'spent'
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('walletToggle') === 'true';
+      const saved = localStorage.getItem('walletViewMode');
+      if (saved === 'left' || saved === 'reality') return saved;
     }
-    return false;
+    return 'spent';
   });
 
-  // Save toggle state to localStorage
+  // Save view mode to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('walletToggle', showAmountLeft.toString());
+      localStorage.setItem('walletViewMode', viewMode);
     }
-  }, [showAmountLeft]);
+  }, [viewMode]);
 
   const spendingPercentage = budget > 0 ? (totalSpending / budget) * 100 : 0;
   const isOverBudget = spendingPercentage >= 100;
   const amountLeft = budget - totalSpending;
+  const realityAmount = totalIncome - totalSpending;
 
   const handleAmountClick = () => {
-    setShowAmountLeft(!showAmountLeft);
+    if (viewMode === 'spent') {
+      setViewMode('left');
+    } else if (viewMode === 'left') {
+      setViewMode('reality');
+    } else {
+      setViewMode('spent');
+    }
   };
+
+  const getDisplayContent = () => {
+    switch (viewMode) {
+      case 'left':
+        return {
+          main: `$${amountLeft.toFixed(2)}`,
+          suffix: ' left'
+        };
+      case 'reality':
+        return {
+          main: `$${realityAmount.toFixed(2)}`,
+          suffix: ' available'
+        };
+      default: // 'spent'
+        return {
+          main: `$${totalSpending.toFixed(2)}`,
+          suffix: `/$${budget.toFixed(2)}`
+        };
+    }
+  };
+
+  const displayContent = getDisplayContent();
 
   return (
     <Card className="rounded-[var(--radius)]">
@@ -89,17 +119,8 @@ export function Balance({
                 className="focus:outline-none hover:opacity-80 transition-opacity"
               >
                 <div className="text-3xl font-bold">
-                  {showAmountLeft ? (
-                    <>
-                      <span className="text-3xl font-bold">${amountLeft.toFixed(2)}</span>
-                      <span className="text-lg text-muted-foreground font-normal"> left</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-3xl font-bold">${totalSpending.toFixed(2)}</span>
-                      <span className="text-lg text-muted-foreground font-normal">/${budget.toFixed(2)}</span>
-                    </>
-                  )}
+                  <span className="text-3xl font-bold">{displayContent.main}</span>
+                  <span className="text-lg text-muted-foreground font-normal">{displayContent.suffix}</span>
                 </div>
               </button>
             </div>
