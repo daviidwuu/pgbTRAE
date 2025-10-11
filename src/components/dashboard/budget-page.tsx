@@ -359,7 +359,7 @@ export function BudgetPage({
                   <button 
                     key={budget.Category} 
                     onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-gray-50"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
                   >
                     <span className="font-medium truncate pr-2">{budget.Category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -375,7 +375,7 @@ export function BudgetPage({
                   <button 
                     key={category} 
                     onClick={() => setEditingCategory(category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border border-dashed hover:bg-gray-50"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
                   >
                     <span className="font-medium truncate pr-2">{category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -401,7 +401,7 @@ export function BudgetPage({
                   <button 
                     key={budget.Category} 
                     onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-gray-50"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
                   >
                     <span className="font-medium truncate pr-2">{budget.Category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
