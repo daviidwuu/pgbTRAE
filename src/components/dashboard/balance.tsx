@@ -21,6 +21,7 @@ interface BalanceProps {
   totalIncome: number;
   netIncome: number;
   budget: number;
+  savingsGoal?: number;
   aggregatedData: { category: string; amount: number }[];
   chartConfig: ChartConfig;
   dateRange: DateRange;
@@ -33,6 +34,7 @@ export function Balance({
   totalIncome,
   netIncome,
   budget,
+  savingsGoal = 0,
   aggregatedData,
   chartConfig,
   dateRange,
@@ -59,7 +61,7 @@ export function Balance({
   const spendingPercentage = budget > 0 ? (totalSpending / budget) * 100 : 0;
   const isOverBudget = spendingPercentage >= 100;
   const amountLeft = budget - totalSpending;
-  const realityAmount = totalIncome - totalSpending;
+  const realityAmount = totalIncome - totalSpending - savingsGoal;
 
   const handleAmountClick = () => {
     if (viewMode === 'spent') {

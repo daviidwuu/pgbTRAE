@@ -927,6 +927,7 @@ export function Dashboard() {
             totalIncome={totalIncome}
             netIncome={netIncome}
             budget={totalBudget}
+            savingsGoal={finalUserData?.savings || 0}
             aggregatedData={aggregatedData}
             chartConfig={chartConfig}
             dateRange={dateRange}
