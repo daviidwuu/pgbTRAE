@@ -136,7 +136,10 @@ export function BudgetPage({
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string>("");
   
-  const categories = user?.categories || [];
+  // Get all categories (user categories + default income categories)
+  const userCategories = user?.categories || [];
+  const userIncomeCategories = user?.incomeCategories || DEFAULT_INCOME_CATEGORIES;
+  const allCategories = [...userCategories, ...userIncomeCategories];
 
   // Calculate totals using BudgetService
   const totalIncomeBudget = useMemo(() => 
@@ -154,7 +157,7 @@ export function BudgetPage({
   const budgetStatus = getBudgetStatus(totalIncomeBudget, totalExpenseBudget);
 
   const handleAddCategory = () => {
-    const validation = validateCategoryName(newCategory, categories);
+    const validation = validateCategoryName(newCategory, allCategories);
     
     if (!validation.isValid) {
       setValidationError(validation.error || "Invalid category name");
@@ -171,6 +174,11 @@ export function BudgetPage({
   };
 
   const getCategoryType = (category: string): CategoryType => {
+    // Check if it's an income category (either user-defined or default)
+    if (userIncomeCategories.includes(category as any)) {
+      return 'income';
+    }
+    // Otherwise check the budget type or default to expense
     return budgets.find(b => b.Category === category)?.type ?? 'expense';
   };
   
@@ -182,6 +190,11 @@ export function BudgetPage({
   // Group categories by type for display
   const incomeBudgets = budgets.filter(b => b.type === 'income');
   const expenseBudgets = budgets.filter(b => (b.type || 'expense') === 'expense');
+  
+  // Add default income categories that don't have budgets yet
+  const defaultIncomeCategoriesToShow = DEFAULT_INCOME_CATEGORIES.filter(
+    category => !budgets.some(b => b.Category === category)
+  );
 
   return (
     <div className="space-y-6 px-4">
@@ -281,9 +294,10 @@ export function BudgetPage({
               {/* Categories List */}
               <ScrollArea className="h-64 mt-4 scrollbar-hide">
                 <div className="space-y-2 px-4">
-                  {categories.map((category: string) => {
+                  {allCategories.map((category: string) => {
                     const categoryType = getCategoryType(category);
                     const typeInfo = getCategoryTypeInfo(categoryType);
+                    const isDefaultIncome = (DEFAULT_INCOME_CATEGORIES as readonly string[]).includes(category);
                     
                     return (
                       <div key={category} className="flex items-center justify-between rounded-md border p-3">
@@ -293,19 +307,26 @@ export function BudgetPage({
                             <span className="mr-1">{typeInfo.icon}</span>
                             {typeInfo.label}
                           </Badge>
+                          {isDefaultIncome && (
+                            <Badge variant="secondary" className="text-xs">
+                              Default
+                            </Badge>
+                          )}
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive" 
-                          onClick={() => onDeleteCategory(category)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!isDefaultIncome && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive" 
+                            onClick={() => onDeleteCategory(category)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     );
                   })}
-                  {categories.length === 0 && (
+                  {allCategories.length === 0 && (
                     <div className="text-center text-muted-foreground pt-8">
                       <p>No categories found.</p>
                       <p className="text-xs">Add one using the form above.</p>
@@ -331,13 +352,14 @@ export function BudgetPage({
           </Drawer>
 
           {/* Income Categories */}
-          {incomeBudgets.length > 0 && (
+          {(incomeBudgets.length > 0 || defaultIncomeCategoriesToShow.length > 0) && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 <h3 className="font-medium text-green-700">Income Categories</h3>
               </div>
               <div className="space-y-2">
+                {/* Existing income budgets */}
                 {incomeBudgets.map((budget) => (
                   <button 
                     key={budget.Category} 
@@ -348,6 +370,27 @@ export function BudgetPage({
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-green-700 font-medium">
                         {formatBudgetAmount(budget.MonthlyBudget)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+                
+                {/* Default income categories without budgets */}
+                {defaultIncomeCategoriesToShow.map((category) => (
+                  <button 
+                    key={category} 
+                    onClick={() => setEditingCategory(category)}
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border border-green-100 bg-green-50/30 hover:bg-green-50/50 border-dashed"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate pr-2">{category}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        Default
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-green-700 font-medium text-muted-foreground">
+                        {formatBudgetAmount(0)}
                       </span>
                     </div>
                   </button>
@@ -383,7 +426,7 @@ export function BudgetPage({
           )}
 
           {/* Empty State */}
-          {categories.length === 0 && (
+          {allCategories.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <p className="text-lg font-medium">No categories yet</p>
               <p className="text-sm">Add your first category to start budgeting</p>
