@@ -1,9 +1,12 @@
 
+export type CategoryType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense';
+
 export interface Transaction {
   id: string;
   Date: { seconds: number; nanoseconds: number; } | string | null;
   Amount: number;
-  Type: 'income' | 'expense';
+  Type: TransactionType;
   Category: string;
   Notes: string;
 }
@@ -11,7 +14,7 @@ export interface Transaction {
 export interface RecurringTransaction {
   id: string;
   Amount: number;
-  Type: 'income' | 'expense';
+  Type: TransactionType;
   Category: string;
   Notes: string;
   frequency: 'weekly' | 'monthly' | 'yearly';
@@ -25,6 +28,14 @@ export interface Budget {
   id: string;
   Category: string;
   MonthlyBudget: number;
+  type?: CategoryType; // Optional for backward compatibility, defaults to 'expense'
+}
+
+export interface CategoryInfo {
+  name: string;
+  type: CategoryType;
+  status: 'active' | 'archived';
+  aliases?: string[]; // For handling renames
 }
 
 export interface User {
@@ -32,6 +43,6 @@ export interface User {
   name: string;
   categories?: string[];
   incomeCategories?: string[];
-  income?: number;
-  savings?: number;
+  income?: number; // Deprecated - will be removed in favor of budget-based income
+  savings?: number; // Deprecated - will be calculated from budgets
 }
