@@ -362,15 +362,30 @@ export function Dashboard() {
 
   const handleAddCategory = (category: string, type?: CategoryType) => {
     if (!userDocRef || !finalUserData) return;
-    const updatedCategories = [...(finalUserData.categories || []), category];
-    updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+    if (type === 'income') {
+      const updatedIncomeCategories = [
+        ...((finalUserData.incomeCategories || DEFAULT_INCOME_CATEGORIES) as string[]),
+        category,
+      ];
+      updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
+    } else {
+      const updatedCategories = [...(finalUserData.categories || []), category];
+      updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+    }
     handleUpdateBudget(category, 0, type); // Initialize with 0 budget and specified type
   };
 
   const handleDeleteCategory = (category: string) => {
     if (!userDocRef || !user || !firestore || !finalUserData) return;
-    const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
-    updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+    // Remove from the correct list depending on where it exists
+    const isIncomeCategory = (finalUserData.incomeCategories || []).includes(category);
+    if (isIncomeCategory) {
+      const updatedIncomeCategories = (finalUserData.incomeCategories || []).filter((c: string) => c !== category);
+      updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
+    } else {
+      const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
+      updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+    }
 
     const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
     deleteDocumentNonBlocking(budgetRef);
