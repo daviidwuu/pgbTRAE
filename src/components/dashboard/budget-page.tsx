@@ -102,7 +102,7 @@ function BudgetEditDrawer({ category, currentBudget, currentType, onUpdateBudget
         <div className="space-y-2">
           <label className="text-sm font-medium">Monthly Budget</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-3xl text-muted-foreground">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-3xl text-muted-foreground font-bold">$</span>
             <Input
               type="number"
               step="0.01"
@@ -111,7 +111,7 @@ function BudgetEditDrawer({ category, currentBudget, currentType, onUpdateBudget
               onChange={(e) => setBudgetValue(e.target.value)}
               onBlur={handleUpdate}
               placeholder="0.00"
-              className="h-auto w-full border-none bg-transparent text-center text-3xl font-bold pl-8"
+              className="h-auto w-full border-none bg-transparent text-center text-3xl font-bold pl-8 placeholder:text-3xl placeholder:font-bold"
             />
           </div>
         </div>

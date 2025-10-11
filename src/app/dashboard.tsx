@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { type Transaction, type Budget, type User as UserData } from "@/shared/types";
+import { type Transaction, type Budget, type User as UserData, type CategoryType } from "@/shared/types";
 import { type DateRange } from "@/components/dashboard/date-filter";
 import { Balance } from "@/components/dashboard/balance";
 import { TransactionsTable } from "@/components/dashboard/transactions-table";
@@ -349,18 +349,22 @@ export function Dashboard() {
     updateDocumentNonBlocking(userDocRef, { savings: newSavings });
   };
 
-  const handleUpdateBudget = (category: string, newBudget: number) => {
+  const handleUpdateBudget = (category: string, newBudget: number, type?: CategoryType) => {
     if (!user || !firestore) return;
     const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
-    const budgetData = { Category: category, MonthlyBudget: newBudget };
+    const budgetData = { 
+      Category: category, 
+      MonthlyBudget: newBudget,
+      type: type || 'expense' // Default to expense if no type provided
+    };
     setDoc(budgetRef, budgetData, { merge: true });
   };
 
-  const handleAddCategory = (category: string) => {
+  const handleAddCategory = (category: string, type?: CategoryType) => {
     if (!userDocRef || !finalUserData) return;
     const updatedCategories = [...(finalUserData.categories || []), category];
     updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
-    handleUpdateBudget(category, 0); // Initialize with 0 budget
+    handleUpdateBudget(category, 0, type); // Initialize with 0 budget and specified type
   };
 
   const handleDeleteCategory = (category: string) => {
