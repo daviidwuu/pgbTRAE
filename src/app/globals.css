@@ -152,6 +152,16 @@ body {
   }
 }
 
+/* Standardize input and placeholder font styles */
+input::placeholder,
+textarea::placeholder {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  opacity: 1; /* ensure visual consistency */
+}
+
 /* Hide number input spinners */
 /* For Chrome, Safari, Edge, Opera */
 input[type=number]::-webkit-outer-spin-button,

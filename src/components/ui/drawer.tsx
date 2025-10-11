@@ -43,10 +43,11 @@ const DrawerContent = React.forwardRef<
     <DrawerOverlay />
     <DrawerPrimitive.Content
       ref={ref}
+      data-vaul-drawer
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[var(--radius)] bg-background",
         // Fix for mobile keyboard: use viewport units and safe area insets
-        "max-h-[100dvh] pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+        "max-h-[100dvh] pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-[calc(env(safe-area-inset-top))]",
         // Prevent drawer from flying out when keyboard appears and ensure smooth return
         "transform-none transition-transform duration-300 ease-out",
         className
@@ -62,7 +63,10 @@ const DrawerContent = React.forwardRef<
       {...props}
     >
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-      {children}
+      {/* Safe-area wrapper to ensure internal content respects iOS PWA insets */}
+      <div data-vaul-drawer-wrapper className="flex-1 min-h-0">
+        {children}
+      </div>
     </DrawerPrimitive.Content>
   </DrawerPortal>
 ))
@@ -73,7 +77,7 @@ const DrawerHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("grid gap-1.5 p-4 text-center sm:text-left", className)}
+    className={cn("grid gap-1.5 p-4 pt-[calc(env(safe-area-inset-top))] text-center sm:text-left", className)}
     {...props}
   />
 )
@@ -84,7 +88,7 @@ const DrawerFooter = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+    className={cn("mt-auto flex flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]", className)}
     {...props}
   />
 )
