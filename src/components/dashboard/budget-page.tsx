@@ -307,11 +307,6 @@ export function BudgetPage({
                             <span className="mr-1">{typeInfo.icon}</span>
                             {typeInfo.label}
                           </Badge>
-                          {isDefaultIncome && (
-                            <Badge variant="secondary" className="text-xs">
-                              Default
-                            </Badge>
-                          )}
                         </div>
                         {!isDefaultIncome && (
                           <Button 
@@ -364,12 +359,12 @@ export function BudgetPage({
                   <button 
                     key={budget.Category} 
                     onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border border-green-100 bg-green-50/50 hover:bg-green-50"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-gray-50"
                   >
                     <span className="font-medium truncate pr-2">{budget.Category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-green-700 font-medium">
-                        {formatBudgetAmount(budget.MonthlyBudget)}
+                      <span className="font-medium">
+                        ${formatBudgetAmount(budget.MonthlyBudget).replace('$', '')}
                       </span>
                     </div>
                   </button>
@@ -380,17 +375,12 @@ export function BudgetPage({
                   <button 
                     key={category} 
                     onClick={() => setEditingCategory(category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border border-green-100 bg-green-50/30 hover:bg-green-50/50 border-dashed"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border border-dashed hover:bg-gray-50"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium truncate pr-2">{category}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        Default
-                      </Badge>
-                    </div>
+                    <span className="font-medium truncate pr-2">{category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-green-700 font-medium text-muted-foreground">
-                        {formatBudgetAmount(0)}
+                      <span className="font-medium text-muted-foreground">
+                        ${formatBudgetAmount(0).replace('$', '')}
                       </span>
                     </div>
                   </button>
@@ -411,12 +401,12 @@ export function BudgetPage({
                   <button 
                     key={budget.Category} 
                     onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border border-red-100 bg-red-50/50 hover:bg-red-50"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-gray-50"
                   >
                     <span className="font-medium truncate pr-2">{budget.Category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-red-700 font-medium">
-                        {formatBudgetAmount(budget.MonthlyBudget)}
+                      <span className="font-medium">
+                        ${formatBudgetAmount(budget.MonthlyBudget).replace('$', '')}
                       </span>
                     </div>
                   </button>

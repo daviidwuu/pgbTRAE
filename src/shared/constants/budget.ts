@@ -15,7 +15,7 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
  */
 export const DEFAULT_INCOME_CATEGORIES = [
   "Salary",
-  "External Transfers"
+  "Transfer"
 ] as const;
 
 /**
