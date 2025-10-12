@@ -6,7 +6,7 @@ export const CHART_COLORS = [
 
 // Default categories for new users
 export const DEFAULT_CATEGORIES = [
-  "F&B", "Shopping", "Transport", "Bills",
+  "F&B", "Shopping", "Transport", "Bills", "Others",
 ];
 
 // Default income categories for new users

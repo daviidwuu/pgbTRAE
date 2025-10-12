@@ -45,4 +45,7 @@ export interface User {
   incomeCategories?: string[];
   income?: number; // Deprecated - will be removed in favor of budget-based income
   savings?: number; // Deprecated - will be calculated from budgets
+  isInitialized?: boolean; // Flag to track if user has been properly initialized with defaults
+  createdAt?: Date;
+  updatedAt?: Date;
 }

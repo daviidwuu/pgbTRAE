@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
+import { useIOSKeyboard } from "@/lib/ios-keyboard-handler"
 
 import { cn } from "@/shared/utils";
 
@@ -38,38 +39,56 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DrawerPortal>
-    <DrawerOverlay />
-    <DrawerPrimitive.Content
-      ref={ref}
-      data-vaul-drawer
-      className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[var(--radius)] bg-background",
-        // Fix for mobile keyboard: use viewport units and safe area insets
-        "max-h-[100dvh] pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-[calc(env(safe-area-inset-top))]",
-        // Prevent drawer from flying out when keyboard appears and ensure smooth return
-        "transform-none transition-transform duration-300 ease-out",
-        className
-      )}
-      style={{
-        // Ensure drawer stays in place when virtual keyboard appears
-        position: 'fixed',
-        bottom: 0,
-        transform: 'none',
-        // Add transition for smooth return to bottom when keyboard dismisses
-        transition: 'transform 0.3s ease-out',
-      }}
-      {...props}
-    >
-      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-      {/* Safe-area wrapper to ensure internal content respects iOS PWA insets */}
-      <div data-vaul-drawer-wrapper className="flex-1 min-h-0">
-        {children}
-      </div>
-    </DrawerPrimitive.Content>
-  </DrawerPortal>
-))
+>(({ className, children, ...props }, ref) => {
+  const keyboardState = useIOSKeyboard();
+  
+  return (
+    <DrawerPortal>
+      <DrawerOverlay />
+      <DrawerPrimitive.Content
+        ref={ref}
+        data-vaul-drawer
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[var(--radius)] bg-background",
+          // Fix for mobile keyboard: use viewport units and safe area insets
+          "max-h-[100dvh] pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-[calc(env(safe-area-inset-top))]",
+          "transform-none transition-transform duration-300 ease-out",
+          className
+        )}
+        style={{
+          // iOS PWA keyboard handling
+          position: 'fixed',
+          bottom: keyboardState.isVisible ? keyboardState.offset : 0,
+          transform: 'none',
+          // Smooth transition for keyboard appearance
+          transition: 'transform 0.3s ease-out, bottom 0.3s ease-out',
+          // Ensure content doesn't exceed viewport
+          maxHeight: keyboardState.isVisible 
+            ? `calc(100dvh - ${keyboardState.offset}px - env(safe-area-inset-top) - env(safe-area-inset-bottom))`
+            : 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+        }}
+        {...props}
+      >
+        <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+
+        <div 
+          data-vaul-drawer-wrapper 
+          className="flex-1 min-h-0"
+          style={{
+            // Ensure content area respects keyboard
+            maxHeight: keyboardState.isVisible 
+              ? `calc(100dvh - ${keyboardState.offset}px - 8rem)` // Account for header/footer space
+              : 'calc(100dvh - 8rem)',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+          }}
+        >
+          {children}
+        </div>
+      </DrawerPrimitive.Content>
+    </DrawerPortal>
+  );
+});
 DrawerContent.displayName = "DrawerContent"
 
 const DrawerHeader = ({
@@ -86,12 +105,23 @@ DrawerHeader.displayName = "DrawerHeader"
 const DrawerFooter = ({
   className,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("mt-auto flex flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]", className)}
-    {...props}
-  />
-)
+}: React.HTMLAttributes<HTMLDivElement>) => {
+  const keyboardState = useIOSKeyboard();
+  
+  return (
+    <div
+      className={cn("mt-auto flex flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]", className)}
+      style={{
+        // Ensure footer stays above keyboard and home indicator
+        paddingBottom: keyboardState.isVisible 
+          ? `calc(${keyboardState.offset}px + env(safe-area-inset-bottom) + 1rem)`
+          : 'calc(env(safe-area-inset-bottom) + 1rem)',
+        transition: 'padding-bottom 0.3s ease-out',
+      }}
+      {...props}
+    />
+  );
+};
 DrawerFooter.displayName = "DrawerFooter"
 
 const DrawerTitle = React.forwardRef<

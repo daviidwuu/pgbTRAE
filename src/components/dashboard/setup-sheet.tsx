@@ -68,7 +68,7 @@ export function SetupSheet({ onSave, onCopyUserId, userId }: SetupSheetProps) {
         <CardHeader>
             <CardTitle>Welcome to piggybank</CardTitle>
             <CardDescription>
-                To get started, please enter your name. Then, copy your unique User ID and add the Apple Shortcut to start logging transactions.
+                Set up your account with default categories for expenses (F&B, Shopping, Transport, Bills, Others) and income (Salary, Transfer). Then add the Apple Shortcut to start logging transactions quickly.
             </CardDescription>
         </CardHeader>
         <CardContent className="pb-2 space-y-4">
@@ -111,7 +111,7 @@ export function SetupSheet({ onSave, onCopyUserId, userId }: SetupSheetProps) {
               <div className="w-full space-y-2">
                 <p className="text-sm text-muted-foreground">2. Add the Shortcut to your iPhone:</p>
                 <Button asChild className="w-full">
-                    <Link href="https://www.icloud.com/shortcuts/af9c743c8ad04fe9adb4dc2d2b4a0927" target="_blank">
+                    <Link href="https://www.icloud.com/shortcuts/74a972a014cc4469b2fe0fa5787508a3" target="_blank">
                         <LinkIcon className="mr-2 h-4 w-4" />
                         Add Apple Shortcut
                     </Link>

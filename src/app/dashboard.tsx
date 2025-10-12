@@ -46,7 +46,7 @@ import { Plus, Settings, Wallet, User as UserIcon, LogOut, FileText, Bell, Smart
 import { SkeletonLoader } from "@/components/dashboard/skeleton-loader";
 import { useToast } from "@/shared/hooks";
 import { useAuth, useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
-import { doc, collection, setDoc, query, orderBy, limit } from 'firebase/firestore';
+import { doc, collection, setDoc, query, orderBy, limit, getDocs, type QueryDocumentSnapshot, type DocumentData } from 'firebase/firestore';
 import { signOut } from "firebase/auth";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import {
@@ -77,7 +77,7 @@ const chartColors = [
 ];
 
 const defaultCategories = [
-  "F&B", "Shopping", "Transport", "Bills",
+  "F&B", "Shopping", "Transport", "Bills", "Others",
 ];
 
 function DrawerContentFallback() {
@@ -275,6 +275,53 @@ export function Dashboard() {
 
   const finalUserData = userData;
 
+  // Category backfill logic for existing users
+  useEffect(() => {
+    if (!finalUserData || !userDocRef || !user) return;
+    
+    const needsBackfill = 
+      !finalUserData.categories || 
+      !finalUserData.incomeCategories || 
+      finalUserData.categories.length === 0 || 
+      finalUserData.incomeCategories.length === 0 ||
+      !finalUserData.isInitialized;
+
+    if (needsBackfill) {
+      const updates: Partial<UserData> = {};
+      
+      // Backfill expense categories
+      if (!finalUserData.categories || finalUserData.categories.length === 0) {
+        updates.categories = defaultCategories;
+      } else {
+        // Add missing default categories
+        const missingCategories = defaultCategories.filter(cat => !finalUserData.categories?.includes(cat));
+        if (missingCategories.length > 0) {
+          updates.categories = [...(finalUserData.categories || []), ...missingCategories];
+        }
+      }
+      
+      // Backfill income categories
+      if (!finalUserData.incomeCategories || finalUserData.incomeCategories.length === 0) {
+        updates.incomeCategories = DEFAULT_INCOME_CATEGORIES;
+      } else {
+        // Add missing default income categories
+        const missingIncomeCategories = DEFAULT_INCOME_CATEGORIES.filter(cat => !finalUserData.incomeCategories?.includes(cat));
+        if (missingIncomeCategories.length > 0) {
+          updates.incomeCategories = [...(finalUserData.incomeCategories || []), ...missingIncomeCategories];
+        }
+      }
+      
+      // Mark as initialized
+      updates.isInitialized = true;
+      updates.updatedAt = new Date();
+      
+      if (Object.keys(updates).length > 0) {
+        console.log('Backfilling categories for existing user:', updates);
+        updateDocumentNonBlocking(userDocRef, updates);
+      }
+    }
+  }, [finalUserData, userDocRef, user]);
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -375,20 +422,129 @@ export function Dashboard() {
     handleUpdateBudget(category, 0, type); // Initialize with 0 budget and specified type
   };
 
-  const handleDeleteCategory = (category: string) => {
+  const handleDeleteCategory = async (category: string) => {
     if (!userDocRef || !user || !firestore || !finalUserData) return;
-    // Remove from the correct list depending on where it exists
+    
+    // Protect 'Others' category from deletion
+    if (category === 'Others') {
+      toast({
+        variant: "destructive",
+        title: "Cannot Delete Category",
+        description: "'Others' is a protected category and cannot be deleted.",
+      });
+      return;
+    }
+    
+    // Determine category type and target reassignment category
     const isIncomeCategory = (finalUserData.incomeCategories || []).includes(category);
-    if (isIncomeCategory) {
-      const updatedIncomeCategories = (finalUserData.incomeCategories || []).filter((c: string) => c !== category);
-      updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
-    } else {
-      const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
-      updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+    const targetCategory = isIncomeCategory ? 'Transfer' : 'Others';
+    
+    // Ensure target category exists in the appropriate list
+    if (isIncomeCategory && !(finalUserData.incomeCategories || []).includes(targetCategory)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot Delete Category",
+        description: "Target reassignment category 'Transfer' not found in income categories.",
+      });
+      return;
+    }
+    
+    if (!isIncomeCategory && !(finalUserData.categories || []).includes(targetCategory)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot Delete Category",
+        description: "Target reassignment category 'Others' not found in expense categories.",
+      });
+      return;
     }
 
-    const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
-    deleteDocumentNonBlocking(budgetRef);
+    try {
+      // Count transactions that will be reassigned
+      const transactionsQuery = query(
+        collection(firestore, `users/${user.uid}/transactions`),
+        orderBy('Date', 'desc')
+      );
+      const transactionsSnapshot = await getDocs(transactionsQuery);
+      const transactionsToReassign = transactionsSnapshot.docs.filter((doc: QueryDocumentSnapshot<DocumentData>) => 
+        doc.data().Category === category
+      );
+      
+      // Count recurring transactions that will be reassigned
+      const recurringQuery = query(
+        collection(firestore, `users/${user.uid}/recurringTransactions`)
+      );
+      const recurringSnapshot = await getDocs(recurringQuery);
+      const recurringToReassign = recurringSnapshot.docs.filter((doc: QueryDocumentSnapshot<DocumentData>) => 
+        doc.data().Category === category
+      );
+      
+      const totalItems = transactionsToReassign.length + recurringToReassign.length;
+      
+      if (totalItems > 0) {
+        // Show confirmation dialog
+        const confirmed = window.confirm(
+          `This will delete the "${category}" category and reassign ${totalItems} item(s) to "${targetCategory}". Continue?`
+        );
+        
+        if (!confirmed) return;
+      }
+
+      // Batch reassign transactions (process in chunks of 400 to avoid Firestore limits)
+      const batchSize = 400;
+      for (let i = 0; i < transactionsToReassign.length; i += batchSize) {
+        const batch = transactionsToReassign.slice(i, i + batchSize);
+        const batchPromises = batch.map((doc: QueryDocumentSnapshot<DocumentData>) => {
+          const transactionRef = doc.ref;
+          return updateDocumentNonBlocking(transactionRef, { 
+            Category: targetCategory,
+            updatedAt: new Date()
+          });
+        });
+        await Promise.all(batchPromises);
+      }
+      
+      // Batch reassign recurring transactions
+      for (let i = 0; i < recurringToReassign.length; i += batchSize) {
+        const batch = recurringToReassign.slice(i, i + batchSize);
+        const batchPromises = batch.map((doc: QueryDocumentSnapshot<DocumentData>) => {
+          const recurringRef = doc.ref;
+          return updateDocumentNonBlocking(recurringRef, { 
+            Category: targetCategory,
+            updatedAt: new Date()
+          });
+        });
+        await Promise.all(batchPromises);
+      }
+
+      // Remove category from the appropriate list
+      if (isIncomeCategory) {
+        const updatedIncomeCategories = (finalUserData.incomeCategories || []).filter((c: string) => c !== category);
+        updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
+      } else {
+        const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
+        updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+      }
+
+      // Delete the budget document
+      const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
+      deleteDocumentNonBlocking(budgetRef);
+      
+      // Show success message
+      toast({
+        title: "Category Deleted",
+        description: totalItems > 0 
+          ? `"${category}" deleted and ${totalItems} item(s) reassigned to "${targetCategory}".`
+          : `"${category}" category deleted successfully.`,
+      });
+      
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete category. Please try again.",
+      });
+    }
   };
 
 
