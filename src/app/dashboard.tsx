@@ -227,6 +227,10 @@ export function Dashboard() {
   const [displayDate, setDisplayDate] = useState('');
   const [isClient, setIsClient] = useState(false);
   
+  // Transaction state management
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  
   const { toast } = useToast();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -247,12 +251,8 @@ export function Dashboard() {
     isAllTransactionsLoading,
     visibleTransactions,
     sortOption,
-    transactionToEdit,
-    transactionToDelete,
     setVisibleTransactions,
     setSortOption,
-    setTransactionToEdit,
-    setTransactionToDelete,
     handleEditClick,
     handleDeleteClick,
     handleConfirmDelete,
@@ -274,6 +274,40 @@ export function Dashboard() {
   const { data: budgets, isLoading: isBudgetsLoading } = useCollection<Budget>(budgetsQuery);
 
   const finalUserData = userData;
+
+  // Handle transaction editing
+  const handleTransactionEdit = useCallback((transaction: Transaction) => {
+    setTransactionToEdit(transaction);
+    setAddTransactionOpen(true);
+  }, []);
+
+  // Handle transaction deletion
+  const handleTransactionDelete = useCallback((transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+  }, []);
+
+  // Confirm transaction deletion
+  const handleConfirmTransactionDelete = useCallback(async () => {
+    if (!transactionToDelete || !user || !firestore) return;
+    
+    try {
+      const docRef = doc(firestore, `users/${user.uid}/transactions`, transactionToDelete.id);
+      await deleteDocumentNonBlocking(docRef);
+      
+      toast({
+        title: "Success",
+        description: "Transaction deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete transaction",
+        variant: "destructive",
+      });
+    } finally {
+      setTransactionToDelete(null);
+    }
+  }, [transactionToDelete, user, firestore, toast]);
 
   useEffect(() => {
     setIsClient(true);
@@ -339,65 +373,154 @@ export function Dashboard() {
     navigator.clipboard.writeText(user.uid);
   };
 
-  const handleUpdateIncome = (newIncome: number) => {
+  const handleUpdateIncome = useCallback(async (newIncome: number) => {
     if (!userDocRef) return;
-    updateDocumentNonBlocking(userDocRef, { income: newIncome });
-  };
+    
+    try {
+      await updateDocumentNonBlocking(userDocRef, { income: newIncome });
+      
+      toast({
+        title: "Success",
+        description: "Income updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update income",
+        variant: "destructive",
+      });
+    }
+  }, [userDocRef, toast]);
 
-  const handleUpdateSavings = (newSavings: number) => {
+  const handleUpdateSavings = useCallback(async (newSavings: number) => {
     if (!userDocRef) return;
-    updateDocumentNonBlocking(userDocRef, { savings: newSavings });
-  };
+    
+    try {
+      await updateDocumentNonBlocking(userDocRef, { savings: newSavings });
+      
+      toast({
+        title: "Success",
+        description: "Savings goal updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update savings goal",
+        variant: "destructive",
+      });
+    }
+  }, [userDocRef, toast]);
 
-  const handleUpdateBudget = (category: string, newBudget: number, type?: CategoryType) => {
+  // Budget management handlers
+  const handleUpdateBudget = useCallback(async (category: string, newBudget: number, type?: CategoryType) => {
     if (!user || !firestore) return;
-    const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
-    const budgetData = { 
-      Category: category, 
-      MonthlyBudget: newBudget,
-      type: type || 'expense' // Default to expense if no type provided
-    };
-    setDoc(budgetRef, budgetData, { merge: true });
-  };
+    
+    try {
+      const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
+      const budgetData = { 
+        Category: category, 
+        MonthlyBudget: newBudget,
+        type: type || 'expense', // Default to expense if no type provided
+        updatedAt: new Date(),
+      };
+      
+      await setDoc(budgetRef, budgetData, { merge: true });
+      
+      toast({
+        title: "Success",
+        description: "Budget updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update budget",
+        variant: "destructive",
+      });
+    }
+  }, [user, firestore, toast]);
 
-  const handleAddCategory = (category: string, type?: CategoryType) => {
+  const handleAddCategory = useCallback(async (category: string, type?: CategoryType) => {
     if (!userDocRef || !finalUserData) return;
-    if (type === 'income') {
-      const updatedIncomeCategories = [
-        ...((finalUserData.incomeCategories || DEFAULT_INCOME_CATEGORIES) as string[]),
-        category,
-      ];
-      updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
-    } else {
-      const updatedCategories = [...(finalUserData.categories || []), category];
-      updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+    
+    try {
+      if (type === 'income') {
+        const updatedIncomeCategories = [
+          ...((finalUserData.incomeCategories || DEFAULT_INCOME_CATEGORIES) as string[]),
+          category,
+        ];
+        await updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
+      } else {
+        const updatedCategories = [...(finalUserData.categories || []), category];
+        await updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+      }
+      
+      // Initialize with 0 budget and specified type
+      await handleUpdateBudget(category, 0, type);
+      
+      toast({
+        title: "Success",
+        description: "Category added successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add category",
+        variant: "destructive",
+      });
     }
-    handleUpdateBudget(category, 0, type); // Initialize with 0 budget and specified type
-  };
+  }, [userDocRef, finalUserData, handleUpdateBudget, toast]);
 
-  const handleDeleteCategory = (category: string) => {
+  const handleDeleteCategory = useCallback(async (category: string) => {
     if (!userDocRef || !user || !firestore || !finalUserData) return;
-    // Remove from the correct list depending on where it exists
-    const isIncomeCategory = (finalUserData.incomeCategories || []).includes(category);
-    if (isIncomeCategory) {
-      const updatedIncomeCategories = (finalUserData.incomeCategories || []).filter((c: string) => c !== category);
-      updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
-    } else {
-      const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
-      updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+    
+    try {
+      // Remove from the correct list depending on where it exists
+      const isIncomeCategory = (finalUserData.incomeCategories || []).includes(category);
+      
+      if (isIncomeCategory) {
+        const updatedIncomeCategories = (finalUserData.incomeCategories || []).filter((c: string) => c !== category);
+        await updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
+      } else {
+        const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
+        await updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+      }
+      
+      // Delete the budget for this category
+      const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
+      await deleteDocumentNonBlocking(budgetRef);
+      
+      toast({
+        title: "Success",
+        description: "Category deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete category",
+        variant: "destructive",
+      });
     }
+   }, [userDocRef, user, firestore, finalUserData, toast]);
 
-    const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
-    deleteDocumentNonBlocking(budgetRef);
-  };
-
-
-  const handleUpdateUser = (name: string) => {
-    if (userDocRef) {
-      updateDocumentNonBlocking(userDocRef, { name });
+  const handleUpdateUser = useCallback(async (name: string) => {
+    if (!userDocRef) return;
+    
+    try {
+      await updateDocumentNonBlocking(userDocRef, { name });
       setUserSettingsOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
     }
-  };
+  }, [userDocRef, toast]);
 
   const handleLogout = async () => {
     setShowLogoutConfirm(false);
@@ -744,23 +867,13 @@ export function Dashboard() {
     return <SkeletonLoader />;
   }
 
-  // If user is authenticated but has no profile data (it's null after loading), show setup sheet
-  // Also check that we're not still loading user data
+  // If user is authenticated but has no profile data, allow them to use the app
+  // They can set up their profile through the settings or budget pages
   if (user && finalUserData === null && !isUserDataLoading) {
-    return (
-      <div className="flex flex-col min-h-screen bg-background items-center justify-center">
-          <div className="w-full max-w-[428px] p-6">
-              <SetupSheet 
-                onSave={handleSetupSave} 
-                onCopyUserId={handleCopyUserId}
-                userId={user.uid}
-              />
-          </div>
-      </div>
-    );
+    // Continue to render the dashboard - user can set up data through the UI
   }
 
-  if (!user || !finalUserData || transactions === undefined || budgets === undefined || allTransactions === undefined) {
+  if (!user) {
     return <SkeletonLoader />;
   }
 
@@ -800,7 +913,7 @@ export function Dashboard() {
                   <DialogTitle>User Settings</DialogTitle>
                 </DialogHeader>
                 <UserSettingsDialog
-                  user={finalUserData}
+                  user={finalUserData || null}
                   userId={user?.uid}
                   onSave={handleUpdateUser}
                   onCopyUserId={handleCopyUserIdToast}
@@ -826,7 +939,7 @@ export function Dashboard() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="text-2xl font-bold">Welcome,</h1>
-              <h1 className="text-primary text-3xl font-bold">{finalUserData.name}</h1>
+              <h1 className="text-primary text-3xl font-bold">{finalUserData?.name || 'User'}</h1>
             </div>
             <div className="flex flex-col items-end">
                 <div className="flex items-center gap-2">
@@ -836,15 +949,21 @@ export function Dashboard() {
                         <DrawerTitle>Wallet</DrawerTitle>
                       </DrawerHeader>
                       <ScrollArea className="h-[70vh] scrollbar-hide">
-                        <BudgetPage 
-                          user={finalUserData}
-                          budgets={budgets || []} 
-                          onUpdateIncome={handleUpdateIncome}
-                          onUpdateSavings={handleUpdateSavings}
-                          onUpdateBudget={handleUpdateBudget} 
-                          onAddCategory={handleAddCategory}
-                          onDeleteCategory={handleDeleteCategory}
-                        />
+                        {finalUserData ? (
+                          <BudgetPage 
+                            user={finalUserData}
+                            budgets={budgets || []} 
+                            onUpdateIncome={handleUpdateIncome}
+                            onUpdateSavings={handleUpdateSavings}
+                            onUpdateBudget={handleUpdateBudget} 
+                            onAddCategory={handleAddCategory}
+                            onDeleteCategory={handleDeleteCategory}
+                          />
+                        ) : (
+                          <div className="p-6 text-center text-muted-foreground">
+                            Loading budget data...
+                          </div>
+                        )}
                       </ScrollArea>
                     </DrawerContent>
                   </Drawer>
@@ -956,8 +1075,8 @@ export function Dashboard() {
             onLoadMore={() => setVisibleTransactions(v => v + 20)}
             sortOption={sortOption}
             onSortChange={setSortOption}
-            onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
+            onEdit={handleTransactionEdit}
+            onDelete={handleTransactionDelete}
           />
         </main>
 
@@ -993,6 +1112,14 @@ export function Dashboard() {
             <RecurringTransactionsPage categories={categories} incomeCategories={incomeCategories} />
           </DrawerContent>
         </Drawer>
+
+        {/* Delete Transaction Dialog */}
+        <DeleteTransactionDialog
+          open={!!transactionToDelete}
+          onOpenChange={(open) => !open && setTransactionToDelete(null)}
+          onConfirm={handleConfirmTransactionDelete}
+          transaction={transactionToDelete}
+        />
 
       </div>
     </div>

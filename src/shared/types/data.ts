@@ -45,4 +45,5 @@ export interface User {
   incomeCategories?: string[];
   income?: number; // Deprecated - will be removed in favor of budget-based income
   savings?: number; // Deprecated - will be calculated from budgets
+  onboardingCompleted?: boolean; // Flag to track if user has completed onboarding
 }

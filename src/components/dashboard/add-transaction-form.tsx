@@ -68,10 +68,23 @@ export function AddTransactionForm({ setOpen, userId, transactionToEdit, categor
 
   useEffect(() => {
     if (transactionToEdit) {
+      // Parse the date properly for editing
+      let transactionDate = new Date();
+      if (transactionToEdit.Date) {
+        if (typeof transactionToEdit.Date === 'string') {
+          transactionDate = new Date(transactionToEdit.Date);
+        } else if (typeof transactionToEdit.Date === 'object' && 'seconds' in transactionToEdit.Date) {
+          transactionDate = new Date(transactionToEdit.Date.seconds * 1000);
+        }
+      }
+
       form.reset({
-        ...transactionToEdit,
         Amount: transactionToEdit.Amount,
+        Category: transactionToEdit.Category,
+        Notes: transactionToEdit.Notes,
         isRecurring: false, // Existing transactions are not recurring
+        frequency: 'monthly',
+        nextDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
     } else {
       form.reset({
@@ -120,47 +133,74 @@ export function AddTransactionForm({ setOpen, userId, transactionToEdit, categor
 
     const transactionType = getTransactionType(values.Category);
     
-    const transactionData = {
-        ...values,
-        Date: new Date(),
-        Type: transactionType,
-        userId,
-    };
-    
     try {
         if (transactionToEdit) {
+            // Update existing transaction
+            const transactionData = {
+                Amount: values.Amount,
+                Category: values.Category,
+                Notes: values.Notes,
+                Type: transactionType,
+                // Keep the original date when editing
+                Date: transactionToEdit.Date,
+            };
+            
             const transactionRef = doc(firestore, `users/${userId}/transactions`, transactionToEdit.id);
-            updateDocumentNonBlocking(transactionRef, transactionData);
+            await updateDocumentNonBlocking(transactionRef, transactionData);
+            
+            toast({
+                title: "Success",
+                description: "Transaction updated successfully.",
+            });
         } else {
+            // Create new transaction
+            const transactionData = {
+                Amount: values.Amount,
+                Category: values.Category,
+                Notes: values.Notes,
+                Date: new Date(),
+                Type: transactionType,
+                userId,
+            };
+            
             const transactionsCollection = collection(firestore, `users/${userId}/transactions`);
             await addDocumentNonBlocking(transactionsCollection, transactionData);
-        }
 
-        // Handle recurring transaction creation
-        if (values.isRecurring && values.frequency && values.nextDueDate) {
-          const recurringTransactionData = {
-            Amount: values.Amount,
-            Type: transactionType,
-            Category: values.Category,
-            Notes: values.Notes,
-            frequency: values.frequency,
-            nextDueDate: values.nextDueDate,
-            isActive: true,
-            createdAt: new Date(),
-            userId,
-          };
+            // Handle recurring transaction creation
+            if (values.isRecurring && values.frequency && values.nextDueDate) {
+              const recurringTransactionData = {
+                Amount: values.Amount,
+                Type: transactionType,
+                Category: values.Category,
+                Notes: values.Notes,
+                frequency: values.frequency,
+                nextDueDate: values.nextDueDate,
+                isActive: true,
+                createdAt: new Date(),
+                userId,
+              };
 
-          const recurringCollection = collection(firestore, `users/${userId}/recurringTransactions`);
-          await addDocumentNonBlocking(recurringCollection, recurringTransactionData);
-          
-          // Keep toast only for recurring transactions
-          toast({
-              title: "Success",
-              description: `Transaction ${transactionToEdit ? 'updated' : 'added'} successfully with recurring schedule.`,
-          });
+              const recurringCollection = collection(firestore, `users/${userId}/recurringTransactions`);
+              await addDocumentNonBlocking(recurringCollection, recurringTransactionData);
+              
+              toast({
+                  title: "Success",
+                  description: "Transaction added successfully with recurring schedule.",
+              });
+            } else {
+              toast({
+                  title: "Success",
+                  description: "Transaction added successfully.",
+              });
+            }
         }
     } catch (error) {
         console.error('Failed to save transaction', error);
+        toast({
+            title: "Error",
+            description: "Failed to save transaction. Please try again.",
+            variant: "destructive",
+        });
     } finally {
         setIsLoading(false);
         setOpen(false);

@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { type Budget, type User, type CategoryType } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -30,7 +31,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Pencil, Trash2, Plus, TrendingUp, TrendingDown } from "lucide-react";
+import { 
+  Wallet, 
+  TrendingUp, 
+  TrendingDown, 
+  Plus, 
+  Trash2, 
+  Pencil,
+  Target,
+  DollarSign
+} from "lucide-react";
 import { BudgetService } from "@/features/budgets/services/BudgetService";
 import { getBudgetStatus, formatBudgetAmount, validateCategoryName, getCategoryTypeInfo } from "@/shared/utils/budget";
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from "@/shared/constants/budget";
@@ -63,63 +73,73 @@ function BudgetEditDrawer({ category, currentBudget, currentType, onUpdateBudget
     }
   };
 
-  const typeInfo = getCategoryTypeInfo(categoryType);
-
   return (
-    <DrawerContent>
-      <DrawerHeader>
-        <DrawerTitle>Edit Budget: {category}</DrawerTitle>
-        <DrawerDescription>
-          Adjust the monthly budget and category type
-        </DrawerDescription>
-      </DrawerHeader>
-      <div className="p-4 space-y-6">
-        {/* Category Type Selector */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Category Type</label>
-          <Select value={categoryType} onValueChange={(value: CategoryType) => setCategoryType(value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="income">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                  Income
-                </div>
-              </SelectItem>
-              <SelectItem value="expense">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                  Expense
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-6 p-4">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <DollarSign className="w-8 h-8 text-primary" />
         </div>
-
-        {/* Budget Amount */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Monthly Budget</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-3xl text-muted-foreground font-bold">$</span>
-            <Input
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              value={budgetValue}
-              onChange={(e) => setBudgetValue(e.target.value)}
-              onBlur={handleUpdate}
-              placeholder="0.00"
-              className="h-auto w-full border-none bg-transparent text-center text-3xl font-bold pl-8 placeholder:text-3xl placeholder:font-bold"
-            />
-          </div>
-        </div>
+        <h3 className="text-xl font-bold">Edit {category}</h3>
+        <p className="text-muted-foreground">
+          Set your monthly budget for this category
+        </p>
       </div>
+
+      {/* Budget Input Card */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <Label htmlFor="budget">Monthly Budget</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-lg">
+                $
+              </span>
+              <Input
+                id="budget"
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                value={budgetValue}
+                onChange={(e) => setBudgetValue(e.target.value)}
+                placeholder="0.00"
+                className="h-12 text-lg pl-8"
+                min="0"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Category Type Selection */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <Label>Category Type</Label>
+            <Select value={categoryType} onValueChange={(value: CategoryType) => setCategoryType(value)}>
+              <SelectTrigger className="h-12">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Update Button */}
       <DrawerClose asChild>
-        <Button className="w-full" onClick={handleUpdate}>Done</Button>
+        <Button 
+          onClick={handleUpdate}
+          className="w-full h-12 text-lg font-semibold"
+          size="lg"
+        >
+          Update Budget
+        </Button>
       </DrawerClose>
-    </DrawerContent>
+    </div>
   );
 }
 
@@ -149,289 +169,289 @@ export function BudgetPage({
   const totalExpenseBudget = useMemo(() => 
     BudgetService.getTotalExpenseBudget(budgets), [budgets]
   );
-  
-  const plannedSavings = useMemo(() => 
-    BudgetService.getPlannedSavings(budgets), [budgets]
+
+  const plannedSavings = totalIncomeBudget - totalExpenseBudget;
+  const budgetStatus = getBudgetStatus(plannedSavings, totalIncomeBudget);
+
+  // Separate budgets by type
+  const incomeBudgets = budgets.filter(b => b.type === 'income');
+  const expenseBudgets = budgets.filter(b => b.type === 'expense');
+
+  // Get default income categories that don't have budgets yet
+  const defaultIncomeCategoriesToShow = DEFAULT_INCOME_CATEGORIES.filter(
+    category => !incomeBudgets.some(b => b.Category === category)
   );
-
-  const budgetStatus = getBudgetStatus(totalIncomeBudget, totalExpenseBudget);
-
-  const handleAddCategory = () => {
-    const validation = validateCategoryName(newCategory, allCategories);
-    
-    if (!validation.isValid) {
-      setValidationError(validation.error || "Invalid category name");
-      return;
-    }
-
-    onAddCategory(newCategory.trim(), newCategoryType);
-    setNewCategory("");
-    setValidationError("");
-  };
 
   const getBudgetForCategory = (category: string) => {
     return budgets.find(b => b.Category === category)?.MonthlyBudget ?? 0;
   };
 
   const getCategoryType = (category: string): CategoryType => {
-    // Check if it's an income category (either user-defined or default)
-    if (userIncomeCategories.includes(category as any)) {
-      return 'income';
-    }
-    // Otherwise check the budget type or default to expense
-    return budgets.find(b => b.Category === category)?.type ?? 'expense';
+    const budget = budgets.find(b => b.Category === category);
+    if (budget) return budget.type || 'expense';
+    return (DEFAULT_INCOME_CATEGORIES as readonly string[]).includes(category) ? 'income' : 'expense';
   };
-  
+
   const handleUpdateAndCloseDrawer = (category: string, newBudget: number, type: CategoryType) => {
     onUpdateBudget(category, newBudget, type);
     setEditingCategory(null);
   };
 
-  // Group categories by type for display
-  const incomeBudgets = budgets.filter(b => b.type === 'income');
-  const expenseBudgets = budgets.filter(b => (b.type || 'expense') === 'expense');
-  
-  // Add default income categories that don't have budgets yet
-  const defaultIncomeCategoriesToShow = DEFAULT_INCOME_CATEGORIES.filter(
-    category => !budgets.some(b => b.Category === category)
-  );
+  const handleAddCategory = () => {
+    const trimmedCategory = newCategory.trim();
+    const validation = validateCategoryName(trimmedCategory, allCategories);
+    
+    if (!validation.isValid) {
+      setValidationError(validation.error || "Invalid category name");
+      return;
+    }
+
+    onAddCategory(trimmedCategory, newCategoryType);
+    setNewCategory("");
+    setValidationError("");
+  };
+
+  const handleDeleteCategory = (category: string) => {
+    onDeleteCategory(category);
+  };
 
   return (
-    <div className="space-y-6 px-4">
-      {/* Budget Summary Header */}
-      <Card className="border-none shadow-none">
-        <CardHeader>
-          <CardTitle>Budget Overview</CardTitle>
-          <CardDescription>Manage your income and expense categories</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <div className="text-sm text-muted-foreground">Total Income Budget</div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Wallet className="w-8 h-8 text-primary" />
+        </div>
+        <h2 className="text-2xl font-bold">Budget Management</h2>
+        <p className="text-muted-foreground">
+          Manage your income and expense categories
+        </p>
+      </div>
+
+      {/* Budget Overview Cards */}
+      <div className="space-y-4">
+        {/* Total Income */}
+        <Card>
+          <CardContent className="flex items-center justify-between pt-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Total Income Budget</CardTitle>
+                <CardDescription>Monthly income allocation</CardDescription>
+              </div>
+            </div>
+            <div className="text-right">
               <div className="text-2xl font-bold text-green-600">
                 {formatBudgetAmount(totalIncomeBudget)}
               </div>
             </div>
-            <div className="space-y-1">
-              <div className="text-sm text-muted-foreground">Total Expense Budget</div>
+          </CardContent>
+        </Card>
+
+        {/* Total Expenses */}
+        <Card>
+          <CardContent className="flex items-center justify-between pt-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <TrendingDown className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Total Expense Budget</CardTitle>
+                <CardDescription>Monthly spending allocation</CardDescription>
+              </div>
+            </div>
+            <div className="text-right">
               <div className="text-2xl font-bold text-red-600">
                 {formatBudgetAmount(totalExpenseBudget)}
               </div>
             </div>
-          </div>
-          
-          <div className="pt-2 border-t">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Planned Savings</div>
-                <div className={`text-xl font-bold ${budgetStatus.color}`}>
-                  {formatBudgetAmount(plannedSavings, true)}
-                </div>
+          </CardContent>
+        </Card>
+
+        {/* Planned Savings */}
+        <Card>
+          <CardContent className="flex items-center justify-between pt-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <Target className="w-6 h-6 text-primary" />
               </div>
-              <Badge variant="outline" className={`${budgetStatus.bgColor} ${budgetStatus.color}`}>
+              <div>
+                <CardTitle className="text-lg">Planned Savings</CardTitle>
+                <CardDescription>Monthly savings target</CardDescription>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-bold ${budgetStatus.color}`}>
+                {formatBudgetAmount(plannedSavings, true)}
+              </div>
+              <Badge variant="outline" className={`${budgetStatus.bgColor} ${budgetStatus.color} mt-1`}>
                 {budgetStatus.label}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {budgetStatus.message}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Category Management */}
-      <Card className="border-none shadow-none">
-        <CardHeader className="flex-row items-center justify-between">
-          <div className="space-y-1.5">
-            <CardTitle>Categories</CardTitle>
-            <CardDescription>Manage your budget categories and amounts</CardDescription>
-          </div>
-          <Drawer open={isCategoryManagerOpen} onOpenChange={setCategoryManagerOpen}>
-            <DrawerTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary flex-shrink-0">
-                <Pencil className="h-4 w-4" />
-              </Button>
-            </DrawerTrigger>
-            <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle>Manage Categories</DrawerTitle>
-                <DrawerDescription>Add or remove budget categories</DrawerDescription>
-              </DrawerHeader>
-              <div className="px-4 space-y-4">
-                {/* Add Category Form */}
-                <div className="space-y-3">
-                  <div className="flex w-full items-center space-x-2">
-                    <Input 
-                      value={newCategory}
-                      onChange={(e) => {
-                        setNewCategory(e.target.value);
-                        setValidationError("");
-                      }}
-                      placeholder="New category name..."
-                      className="h-10"
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
-                    />
-                    <Select value={newCategoryType} onValueChange={(value: CategoryType) => setNewCategoryType(value)}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="income">Income</SelectItem>
-                        <SelectItem value="expense">Expense</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" onClick={handleAddCategory} className="h-10">
-                      <Plus className="h-4 w-4 mr-1"/>
-                      Add
-                    </Button>
-                  </div>
-                  {validationError && (
-                    <p className="text-sm text-red-600">{validationError}</p>
-                  )}
+      {/* Income Categories */}
+      {(incomeBudgets.length > 0 || defaultIncomeCategoriesToShow.length > 0) && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Income Categories</h3>
+          
+          {/* Income budgets with amounts */}
+          {incomeBudgets.map((budget) => (
+            <Card key={budget.Category}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <div>
+                  <CardTitle className="text-base">{budget.Category}</CardTitle>
+                  <CardDescription>
+                    Monthly: {formatBudgetAmount(budget.MonthlyBudget)}
+                  </CardDescription>
                 </div>
-              </div>
-              
-              {/* Categories List */}
-              <ScrollArea className="h-64 mt-4 scrollbar-hide">
-                <div className="space-y-2 px-4">
-                  {allCategories.map((category: string) => {
-                    const categoryType = getCategoryType(category);
-                    const typeInfo = getCategoryTypeInfo(categoryType);
-                    const isDefaultIncome = (DEFAULT_INCOME_CATEGORIES as readonly string[]).includes(category);
-                    
-                    return (
-                      <div key={category} className="flex items-center justify-between rounded-md border p-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{category}</span>
-                          <Badge variant="outline" className="text-xs">
-                            <span className="mr-1">{typeInfo.icon}</span>
-                            {typeInfo.label}
-                          </Badge>
-                        </div>
-                        {!isDefaultIncome && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive" 
-                            onClick={() => onDeleteCategory(category)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {allCategories.length === 0 && (
-                    <div className="text-center text-muted-foreground pt-8">
-                      <p>No categories found.</p>
-                      <p className="text-xs">Add one using the form above.</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </DrawerContent>
-          </Drawer>
-        </CardHeader>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditingCategory(budget.Category)}
+                  className="text-primary hover:text-primary"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              </CardHeader>
+            </Card>
+          ))}
 
-        <CardContent className="space-y-6 pb-4">
-          {/* Budget Edit Drawer */}
-          <Drawer open={!!editingCategory} onOpenChange={(isOpen) => !isOpen && setEditingCategory(null)}>
-            {editingCategory && (
-              <BudgetEditDrawer 
-                category={editingCategory}
-                currentBudget={getBudgetForCategory(editingCategory)}
-                currentType={getCategoryType(editingCategory)}
-                onUpdateBudget={handleUpdateAndCloseDrawer}
+          {/* Default income categories without budgets */}
+          {defaultIncomeCategoriesToShow.map((category) => (
+            <Card key={category} className="border-dashed">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <div>
+                  <CardTitle className="text-base text-muted-foreground">{category}</CardTitle>
+                  <CardDescription>
+                    No budget set
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditingCategory(category)}
+                  className="text-primary hover:text-primary"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Expense Categories */}
+      {expenseBudgets.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Expense Categories</h3>
+          
+          {expenseBudgets.map((budget) => (
+            <Card key={budget.Category}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <div>
+                  <CardTitle className="text-base">{budget.Category}</CardTitle>
+                  <CardDescription>
+                    Monthly: {formatBudgetAmount(budget.MonthlyBudget)}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditingCategory(budget.Category)}
+                    className="text-primary hover:text-primary"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteCategory(budget.Category)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Add New Category */}
+      <Card className="border-dashed">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <Label htmlFor="newCategory">Add New Category</Label>
+            <div className="flex gap-2">
+              <Input
+                id="newCategory"
+                placeholder="e.g., Healthcare, Travel"
+                value={newCategory}
+                onChange={(e) => {
+                  setNewCategory(e.target.value);
+                  setValidationError("");
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
+                className="flex-1"
               />
-            )}
-          </Drawer>
-
-          {/* Income Categories */}
-          {(incomeBudgets.length > 0 || defaultIncomeCategoriesToShow.length > 0) && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-500" />
-                <h3 className="font-medium text-green-700">Income Categories</h3>
-              </div>
-              <div className="space-y-2">
-                {/* Existing income budgets */}
-                {incomeBudgets.map((budget) => (
-                  <button 
-                    key={budget.Category} 
-                    onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
-                  >
-                    <span className="font-medium truncate pr-2">{budget.Category}</span>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="font-medium">
-                        ${formatBudgetAmount(budget.MonthlyBudget).replace('$', '')}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-                
-                {/* Default income categories without budgets */}
-                {defaultIncomeCategoriesToShow.map((category) => (
-                  <button 
-                    key={category} 
-                    onClick={() => setEditingCategory(category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
-                  >
-                    <span className="font-medium truncate pr-2">{category}</span>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="font-medium text-muted-foreground">
-                        ${formatBudgetAmount(0).replace('$', '')}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Expense Categories */}
-          {expenseBudgets.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-red-500" />
-                <h3 className="font-medium text-red-700">Expense Categories</h3>
-              </div>
-              <div className="space-y-2">
-                {expenseBudgets.map((budget) => (
-                  <button 
-                    key={budget.Category} 
-                    onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
-                  >
-                    <span className="font-medium truncate pr-2">{budget.Category}</span>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="font-medium">
-                        ${formatBudgetAmount(budget.MonthlyBudget).replace('$', '')}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {allCategories.length === 0 && (
-            <div className="text-center text-muted-foreground py-8">
-              <p className="text-lg font-medium">No categories yet</p>
-              <p className="text-sm">Add your first category to start budgeting</p>
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => setCategoryManagerOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Category
+              <Select value={newCategoryType} onValueChange={(value: CategoryType) => setNewCategoryType(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={handleAddCategory} disabled={!newCategory.trim()}>
+                <Plus className="w-4 h-4" />
               </Button>
             </div>
-          )}
+            {validationError && (
+              <p className="text-sm text-destructive">{validationError}</p>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Empty State */}
+      {allCategories.length === 0 && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Wallet className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No categories yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add your first category to start budgeting
+            </p>
+            <Button onClick={() => setCategoryManagerOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Budget Drawer */}
+      <Drawer open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
+        <DrawerContent>
+          {editingCategory && (
+            <BudgetEditDrawer
+              category={editingCategory}
+              currentBudget={getBudgetForCategory(editingCategory)}
+              currentType={getCategoryType(editingCategory)}
+              onUpdateBudget={handleUpdateAndCloseDrawer}
+            />
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
