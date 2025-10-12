@@ -196,6 +196,11 @@ export function BudgetPage({
     category => !budgets.some(b => b.Category === category)
   );
 
+  // Add default expense categories that don't have budgets yet
+  const defaultExpenseCategoriesToShow = DEFAULT_EXPENSE_CATEGORIES.filter(
+    category => !budgets.some(b => b.Category === category)
+  );
+
   return (
     <div className="space-y-6 px-4">
       {/* Budget Summary Header */}
@@ -303,8 +308,7 @@ export function BudgetPage({
                       <div key={category} className="flex items-center justify-between rounded-md border p-3">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm">{category}</span>
-                          <Badge variant="outline" className="text-xs">
-                            <span className="mr-1">{typeInfo.icon}</span>
+                          <Badge variant="outline" className={`text-xs ${typeInfo.badgeClass}`}>
                             {typeInfo.label}
                           </Badge>
                         </div>
@@ -390,13 +394,14 @@ export function BudgetPage({
           )}
 
           {/* Expense Categories */}
-          {expenseBudgets.length > 0 && (
+          {(expenseBudgets.length > 0 || defaultExpenseCategoriesToShow.length > 0) && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-red-500" />
                 <h3 className="font-medium text-red-700">Expense Categories</h3>
               </div>
               <div className="space-y-2">
+                {/* Existing expense budgets */}
                 {expenseBudgets.map((budget) => (
                   <button 
                     key={budget.Category} 
@@ -407,6 +412,22 @@ export function BudgetPage({
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="font-medium">
                         ${formatBudgetAmount(budget.MonthlyBudget).replace('$', '')}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+                
+                {/* Default expense categories without budgets */}
+                {defaultExpenseCategoriesToShow.map((category) => (
+                  <button 
+                    key={category} 
+                    onClick={() => setEditingCategory(category)}
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
+                  >
+                    <span className="font-medium truncate pr-2">{category}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="font-medium text-muted-foreground">
+                        ${formatBudgetAmount(0).replace('$', '')}
                       </span>
                     </div>
                   </button>

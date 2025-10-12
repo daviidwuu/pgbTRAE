@@ -48,11 +48,4 @@ export interface User {
   isInitialized?: boolean; // Flag to track if user has been properly initialized with defaults
   createdAt?: Date;
   updatedAt?: Date;
-  
-  // Onboarding flow fields
-  onboardingCompleted?: boolean; // Flag to track if user completed the full onboarding flow
-  estimatedMonthlyIncome?: number; // User's estimated monthly income from onboarding
-  estimatedMonthlyExpenses?: number; // User's estimated monthly expenses from onboarding
-  desiredMonthlySavings?: number; // User's desired monthly savings goal from onboarding
-  onboardingStep?: number; // Current step in onboarding process (0-4)
 }

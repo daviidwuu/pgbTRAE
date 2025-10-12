@@ -7,8 +7,6 @@ import { type Transaction, type Budget, type User as UserData, type CategoryType
 import { type DateRange } from "@/components/dashboard/date-filter";
 import { Balance } from "@/components/dashboard/balance";
 import { TransactionsTable } from "@/components/dashboard/transactions-table";
-import { TodaysTransactionsCard } from "@/components/dashboard/todays-transactions-card";
-import { SavingsCard } from "@/components/dashboard/savings-card";
 import type { AddTransactionFormProps } from "@/components/dashboard/add-transaction-form";
 import type { BudgetPageProps } from "@/components/dashboard/budget-page";
 import type { ReportsPageProps } from "@/components/dashboard/reports-page";
@@ -67,7 +65,6 @@ import { useTransactions } from "@/features/transactions/hooks";
 import { useBudgets } from "@/features/budgets/hooks";
 import { useUserProfile } from "@/features/auth/hooks";
 import { useNotifications, useDashboardState } from "@/features/dashboard/hooks";
-import { useSavings } from "@/features/savings/hooks/useSavings";
 
 // Constants
 import { CHART_COLORS, DEFAULT_INCOME_CATEGORIES } from "@/shared/constants";
@@ -275,14 +272,6 @@ export function Dashboard() {
     [firestore, user]
   );
   const { data: budgets, isLoading: isBudgetsLoading } = useCollection<Budget>(budgetsQuery);
-
-  // Calculate savings using the new hook
-  const savingsData = useSavings(
-    allTransactions || undefined, 
-    budgets || undefined, 
-    isAllTransactionsLoading, 
-    isBudgetsLoading
-  );
 
   const finalUserData = userData;
 
@@ -832,7 +821,7 @@ export function Dashboard() {
     [getNetIncome, filteredTransactions]
   );
 
-  const categories = finalUserData?.categories || [];
+  const categories = finalUserData?.categories || defaultCategories;
   const incomeCategories = finalUserData?.incomeCategories || DEFAULT_INCOME_CATEGORIES;
   const categoryColors = useMemo(() => {
     return categories.reduce((acc: Record<string, string>, category: string, index: number) => {
@@ -1116,17 +1105,6 @@ export function Dashboard() {
             onDateRangeChange={setDateRange}
             displayDate={displayDate}
           />
-          
-          <SavingsCard savingsData={savingsData} />
-          
-          <TodaysTransactionsCard
-            transactions={allTransactions || []}
-            onAddTransaction={() => setAddTransactionOpen(true)}
-            onEditTransaction={handleEditClick}
-            onDeleteTransaction={handleDeleteClick}
-            isLoading={isAllTransactionsLoading}
-          />
-          
           <TransactionsTable 
             data={sortedTransactions} 
             chartConfig={chartConfig}

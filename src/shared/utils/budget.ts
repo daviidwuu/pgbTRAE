@@ -73,8 +73,8 @@ export function validateCategoryName(name: string, existingCategories: string[])
  */
 export function getCategoryTypeInfo(type: CategoryType) {
   return type === 'income' 
-    ? { label: 'Income', color: 'text-green-600', icon: '↗️' }
-    : { label: 'Expense', color: 'text-red-600', icon: '↘️' };
+    ? { label: 'Income', color: 'text-green-600', badgeClass: 'bg-green-100 text-green-700 border-green-200' }
+    : { label: 'Expense', color: 'text-red-600', badgeClass: 'bg-red-100 text-red-700 border-red-200' };
 }
 
 /**
