@@ -393,6 +393,18 @@ export function AddTransactionForm({ setOpen, userId, transactionToEdit, categor
 
                       <FormMessage className="text-center">{form.formState.errors.Category?.message}</FormMessage>
                   </fieldset>
+                  
+                  {/* Next Button for Category Step */}
+                  <div className="flex-shrink-0 pt-4 border-t border-border/50 bg-background form-fixed-button">
+                    <Button 
+                        type="button"
+                        onClick={() => nextStep('Category')} 
+                        className="w-full"
+                        disabled={!form.watch('Category')}
+                    >
+                        Next
+                    </Button>
+                  </div>
               </div>
 
               {/* Notes Step */}

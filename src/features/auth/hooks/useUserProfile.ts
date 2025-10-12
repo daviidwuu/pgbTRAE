@@ -51,6 +51,7 @@ export function useUserProfile() {
         ...userData,
         categories: defaultCategories,
         incomeCategories: DEFAULT_INCOME_CATEGORIES,
+        isInitialized: true,
         createdAt: new Date(),
         updatedAt: new Date()
       });

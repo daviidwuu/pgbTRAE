@@ -7,7 +7,8 @@ export const DEFAULT_EXPENSE_CATEGORIES = [
   "F&B",
   "Shopping", 
   "Transport",
-  "Bills"
+  "Bills",
+  "Others"
 ] as const;
 
 /**
