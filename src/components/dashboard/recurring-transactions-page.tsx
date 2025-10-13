@@ -101,16 +101,17 @@ export function RecurringTransactionsPage({ categories, incomeCategories }: Recu
     try {
       await createRecurringTransaction(values);
       toast({
-        title: "Recurring Transaction Created",
-        description: "Your recurring transaction has been set up successfully.",
+        title: "Success",
+        description: "Recurring transaction created successfully.",
       });
       setCreateDialogOpen(false);
       form.reset();
     } catch (error) {
+      console.error('Failed to create recurring transaction:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create recurring transaction.",
+        description: "Failed to create recurring transaction. Please try again.",
       });
     }
   };
@@ -121,16 +122,17 @@ export function RecurringTransactionsPage({ categories, incomeCategories }: Recu
     try {
       await updateRecurringTransaction(editingTransaction.id, values);
       toast({
-        title: "Recurring Transaction Updated",
-        description: "Your recurring transaction has been updated successfully.",
+        title: "Success",
+        description: "Recurring transaction updated successfully.",
       });
       setEditingTransaction(null);
       form.reset();
     } catch (error) {
+      console.error('Failed to update recurring transaction:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update recurring transaction.",
+        description: "Failed to update recurring transaction. Please try again.",
       });
     }
   };
@@ -152,14 +154,15 @@ export function RecurringTransactionsPage({ categories, incomeCategories }: Recu
     try {
       await deleteRecurringTransaction(id);
       toast({
-        title: "Recurring Transaction Deleted",
-        description: "The recurring transaction has been removed.",
+        title: "Success",
+        description: "Recurring transaction deleted successfully.",
       });
     } catch (error) {
+      console.error('Failed to delete recurring transaction:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete recurring transaction.",
+        description: "Failed to delete recurring transaction. Please try again.",
       });
     }
   };
@@ -168,14 +171,15 @@ export function RecurringTransactionsPage({ categories, incomeCategories }: Recu
     try {
       await toggleRecurringTransaction(id, !isActive);
       toast({
-        title: isActive ? "Recurring Transaction Paused" : "Recurring Transaction Resumed",
-        description: `The recurring transaction has been ${isActive ? 'paused' : 'resumed'}.`,
+        title: "Success",
+        description: `Recurring transaction ${isActive ? 'paused' : 'resumed'} successfully.`,
       });
     } catch (error) {
+      console.error('Failed to toggle recurring transaction:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update recurring transaction status.",
+        description: "Failed to update recurring transaction status. Please try again.",
       });
     }
   };
