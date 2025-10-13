@@ -27,10 +27,10 @@ export function AuthGuard() {
       return;
     }
 
-    // If user is authenticated but we have user data, check onboarding status
+    // If user is authenticated, check their onboarding status
     if (user && userData !== undefined && !isUserDataLoading) {
-      // Check if user needs onboarding (no onboardingCompleted flag or no income set up)
-      if (!userData || !userData.onboardingCompleted || !userData.income || userData.income <= 0) {
+      // For new users (no user document exists) or users who haven't completed onboarding
+      if (!userData || !userData.onboardingCompleted) {
         router.replace('/onboarding');
         return;
       }
@@ -43,7 +43,7 @@ export function AuthGuard() {
   }
 
   // If user is authenticated and has completed onboarding, render the dashboard
-  if (user && userData && userData.onboardingCompleted && userData.income && userData.income > 0) {
+  if (user && userData && userData.onboardingCompleted) {
     return <Dashboard />;
   }
 
