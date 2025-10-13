@@ -2,9 +2,9 @@
 
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { doc } from 'firebase/firestore';
-import { SkeletonLoader } from '@/components/dashboard/skeleton-loader';
+import { FullScreenLoader } from '@/components/ui/full-screen-loader';
 import { Dashboard } from './dashboard';
 import { type User as UserData } from '@/shared/types';
 
@@ -12,6 +12,7 @@ export function AuthGuard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   // Get user data to check onboarding status
   const userDocRef = useMemoFirebase(
@@ -21,32 +22,52 @@ export function AuthGuard() {
   const { data: userData, isLoading: isUserDataLoading } = useDoc<UserData>(userDocRef);
 
   useEffect(() => {
-    // If the initial auth check is done and there's no user, redirect to login.
-    if (!isUserLoading && !user) {
+    // Prevent multiple redirects during the same session
+    if (hasRedirected) return;
+
+    // Wait for auth to be fully resolved before making any decisions
+    if (isUserLoading) return;
+
+    // If no user after auth is resolved, redirect to login
+    if (!user) {
+      console.log('AuthGuard: Redirecting to login - no user');
+      setHasRedirected(true);
       router.replace('/login');
       return;
     }
 
-    // If user is authenticated, check their onboarding status
-    if (user && userData !== undefined && !isUserDataLoading) {
-      // For new users (no user document exists) or users who haven't completed onboarding
-      if (!userData || !userData.onboardingCompleted) {
-        router.replace('/onboarding');
-        return;
-      }
-    }
-  }, [isUserLoading, user, userData, isUserDataLoading, router]);
+    // If we have a user but user data is still loading, wait
+    if (isUserDataLoading) return;
 
-  // While checking for the user or user data, show a loader.
-  if (isUserLoading || (user && isUserDataLoading)) {
-    return <SkeletonLoader />;
+    // Now we have a user and user data loading is complete
+    // Check both onboardingCompleted (new field) and isInitialized (legacy field)
+    const hasCompletedOnboarding = userData?.onboardingCompleted || userData?.isInitialized;
+    
+    if (!userData || !hasCompletedOnboarding) {
+      console.log('AuthGuard: Redirecting to onboarding', {
+        hasUserData: !!userData,
+        onboardingCompleted: userData?.onboardingCompleted,
+        isInitialized: userData?.isInitialized,
+        hasCompletedOnboarding
+      });
+      setHasRedirected(true);
+      router.replace('/onboarding');
+      return;
+    } else {
+      console.log('AuthGuard: User has completed onboarding, showing dashboard');
+    }
+  }, [isUserLoading, user, userData, isUserDataLoading, router, hasRedirected]);
+
+  // Show loading while checking auth state or user data, or during redirect
+  if (isUserLoading || (user && isUserDataLoading) || hasRedirected) {
+    return <FullScreenLoader text="Loading dashboard..." />;
   }
 
   // If user is authenticated and has completed onboarding, render the dashboard
-  if (user && userData && userData.onboardingCompleted) {
+  if (user && userData && (userData.onboardingCompleted || userData.isInitialized)) {
     return <Dashboard />;
   }
 
-  // If no user and not loading, it will be redirected soon. Render a loader in the meantime.
-  return <SkeletonLoader />;
+  // Fallback loader for any edge cases
+  return <FullScreenLoader text="Initializing..." />;
 }

@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/shared/hooks";
+import { FullScreenLoader } from '@/components/ui/full-screen-loader';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -94,11 +95,7 @@ export default function LoginPage() {
   };
 
   if (isUserLoading || (!isUserLoading && user)) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <FullScreenLoader text="Checking authentication..." />;
   }
 
   return (

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet, TrendingUp, PieChart, Loader2 } from "lucide-react";
+import { Plus, Wallet, TrendingUp, PieChart } from "lucide-react";
+import { FullScreenLoader } from "@/components/ui/full-screen-loader";
 
 interface EmptyBalanceProps {
   isLoading?: boolean;
@@ -9,13 +10,7 @@ interface EmptyBalanceProps {
 
 export function EmptyBalance({ isLoading = false, onAddTransaction }: EmptyBalanceProps) {
   if (isLoading) {
-    return (
-      <Card className="rounded-lg">
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <FullScreenLoader text="Loading balance..." />;
   }
 
   return (
@@ -55,13 +50,7 @@ interface EmptyTransactionsProps {
 
 export function EmptyTransactions({ isLoading = false, onAddTransaction }: EmptyTransactionsProps) {
   if (isLoading) {
-    return (
-      <Card className="rounded-lg">
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <FullScreenLoader text="Loading transactions..." />;
   }
 
   return (
@@ -104,13 +93,7 @@ interface EmptyBudgetsProps {
 
 export function EmptyBudgets({ isLoading = false, onSetupBudget }: EmptyBudgetsProps) {
   if (isLoading) {
-    return (
-      <Card className="rounded-lg">
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <FullScreenLoader text="Loading budgets..." />;
   }
 
   return (
@@ -148,19 +131,15 @@ export function EmptyBudgets({ isLoading = false, onSetupBudget }: EmptyBudgetsP
   );
 }
 
-interface LoadingIndicatorProps {
-  text?: string;
-  size?: 'sm' | 'md' | 'lg';
-}
-
-export function LoadingIndicator({ text = "Loading...", size = 'sm' }: LoadingIndicatorProps) {
-  const iconSize = size === 'sm' ? 'h-4 w-4' : size === 'md' ? 'h-6 w-6' : 'h-8 w-8';
-  const textSize = size === 'sm' ? 'text-sm' : size === 'md' ? 'text-base' : 'text-lg';
-  
-  return (
-    <div className="flex items-center gap-2">
-      <Loader2 className={`${iconSize} animate-spin`} />
-      <span className={`${textSize} text-muted-foreground`}>{text}</span>
-    </div>
-  );
-}
+// Remove LoadingIndicator as it's replaced by FullScreenLoader
+// export function LoadingIndicator({ text = "Loading...", size = 'sm' }: LoadingIndicatorProps) {
+//   const iconSize = size === 'sm' ? 'h-4 w-4' : size === 'md' ? 'h-6 w-6' : 'h-8 w-8';
+//   const textSize = size === 'sm' ? 'text-sm' : size === 'md' ? 'text-base' : 'text-lg';
+//   
+//   return (
+//     <div className="flex items-center gap-2">
+//       <Loader2 className={`${iconSize} animate-spin`} />
+//       <span className={`${textSize} text-muted-foreground`}>{text}</span>
+//     </div>
+//   );
+// }

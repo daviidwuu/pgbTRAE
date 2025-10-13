@@ -42,7 +42,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings, Wallet, User as UserIcon, LogOut, FileText, Bell, Smartphone, Repeat } from "lucide-react";
-import { EmptyTransactions, LoadingIndicator } from "@/components/dashboard/empty-states";
+import { EmptyTransactions } from "@/components/dashboard/empty-states";
+import { FullScreenLoader } from "@/components/ui/full-screen-loader";
 import { useAuth, useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import { doc, collection, setDoc } from 'firebase/firestore';
 import { signOut } from "firebase/auth";
@@ -70,11 +71,7 @@ const chartColors = [
 ];
 
 function DrawerContentFallback() {
-  return (
-    <div className="py-6 text-center text-sm text-muted-foreground">
-      Loading...
-    </div>
-  );
+  return <FullScreenLoader text="Loading..." />;
 }
 
 const NOTIFICATION_PROMPT_KEY = 'notificationPromptShown';
@@ -118,15 +115,7 @@ const NotificationPermissionDialog = dynamic<NotificationPermissionDialogProps>(
     ),
   {
     ssr: false,
-    loading: () => (
-      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-        <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
-          <div className="flex justify-center">
-            <LoadingIndicator text="Loading notification settings..." />
-          </div>
-        </div>
-      </div>
-    ),
+    loading: () => <FullScreenLoader text="Loading notification settings..." />,
   }
 );
 
@@ -137,15 +126,7 @@ const DeleteTransactionDialog = dynamic<DeleteTransactionDialogProps>(
     ),
   {
     ssr: false,
-    loading: () => (
-      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-        <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
-          <div className="flex justify-center">
-            <LoadingIndicator text="Loading..." />
-          </div>
-        </div>
-      </div>
-    ),
+    loading: () => <FullScreenLoader text="Loading..." />,
   }
 );
 
@@ -156,11 +137,7 @@ const UserSettingsDialog = dynamic<UserSettingsDialogProps>(
     ),
   {
     ssr: false,
-    loading: () => (
-      <div className="py-6 text-center text-sm text-muted-foreground">
-        Loading profile...
-      </div>
-    ),
+    loading: () => <FullScreenLoader text="Loading profile..." />,
   }
 );
 
@@ -583,25 +560,12 @@ export function Dashboard() {
   const isLoading = isUserLoading || isUserDataLoading || isTransactionsLoading || !finalUserData || !transactions;
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <LoadingIndicator />
-      </div>
-    );
+    return <FullScreenLoader text="Loading dashboard..." />;
   }
 
   // Early return for non-browser environments
   if (typeof window !== 'undefined' && !firestore) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <LoadingIndicator />
-          <p className="text-sm text-muted-foreground">
-            Connecting to database...
-          </p>
-        </div>
-      </div>
-    );
+    return <FullScreenLoader text="Connecting to database..." />;
   }
 
   return (
