@@ -11,7 +11,6 @@ import type { AddTransactionFormProps } from "@/components/dashboard/add-transac
 import type { BudgetPageProps } from "@/components/dashboard/budget-page";
 import type { ReportsPageProps } from "@/components/dashboard/reports-page";
 import type { RecurringTransactionsPageProps } from "@/components/dashboard/recurring-transactions-page";
-import type { SetupSheetProps } from "@/components/dashboard/setup-sheet";
 import type { NotificationPermissionDialogProps } from "@/components/dashboard/notification-permission-dialog";
 import type { DeleteTransactionDialogProps } from "@/components/dashboard/delete-transaction-dialog";
 import type { UserSettingsDialogProps } from "@/components/dashboard/user-settings-dialog";
@@ -43,31 +42,25 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings, Wallet, User as UserIcon, LogOut, FileText, Bell, Smartphone, Repeat } from "lucide-react";
-import { SkeletonLoader } from "@/components/dashboard/skeleton-loader";
-import { useToast } from "@/shared/hooks";
+import { EmptyTransactions, LoadingIndicator } from "@/components/dashboard/empty-states";
 import { useAuth, useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from "@/firebase";
-import { doc, collection, setDoc, query, orderBy, limit, getDocs, type QueryDocumentSnapshot, type DocumentData } from 'firebase/firestore';
+import { doc, collection, setDoc } from 'firebase/firestore';
 import { signOut } from "firebase/auth";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import {
   requestNotificationPermission,
   unsubscribeFromNotifications,
   getSubscription,
   syncSubscriptionWithFirestore,
 } from "@/firebase/messaging";
-import { toDate, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format, getDaysInMonth, differenceInMonths } from "date-fns";
+import { startOfWeek, endOfWeek, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 
 // Import from new feature-based structure
 import { useTransactions } from "@/features/transactions/hooks";
-import { useBudgets } from "@/features/budgets/hooks";
-import { useUserProfile } from "@/features/auth/hooks";
-import { useNotifications, useDashboardState } from "@/features/dashboard/hooks";
-
-// Constants
-import { CHART_COLORS, DEFAULT_INCOME_CATEGORIES } from "@/shared/constants";
+import { DEFAULT_INCOME_CATEGORIES } from "@/shared/constants";
 
 export type SortOption = 'latest' | 'highest' | 'category';
 
@@ -76,25 +69,15 @@ const chartColors = [
   "#78350f", "#ec4899", "#64748b", "#f59e0b"
 ];
 
-const defaultCategories = [
-  "F&B", "Shopping", "Transport", "Bills", "Others",
-];
-
 function DrawerContentFallback() {
   return (
-    <div className="p-4 text-center text-sm text-muted-foreground">
+    <div className="py-6 text-center text-sm text-muted-foreground">
       Loading...
     </div>
   );
 }
 
-function SetupSheetFallback() {
-  return (
-    <div className="flex flex-col items-center justify-center p-6 text-sm text-muted-foreground">
-      Preparing your dashboard...
-    </div>
-  );
-}
+const NOTIFICATION_PROMPT_KEY = 'notificationPromptShown';
 
 const AddTransactionForm = dynamic<AddTransactionFormProps>(
   () =>
@@ -128,14 +111,6 @@ const RecurringTransactionsPage = dynamic<RecurringTransactionsPageProps>(
   { loading: DrawerContentFallback, ssr: false }
 );
 
-const SetupSheet = dynamic<SetupSheetProps>(
-  () =>
-    import("@/components/dashboard/setup-sheet").then(
-      (mod) => mod.SetupSheet
-    ),
-  { loading: SetupSheetFallback, ssr: false }
-);
-
 const NotificationPermissionDialog = dynamic<NotificationPermissionDialogProps>(
   () =>
     import("@/components/dashboard/notification-permission-dialog").then(
@@ -143,24 +118,15 @@ const NotificationPermissionDialog = dynamic<NotificationPermissionDialogProps>(
     ),
   {
     ssr: false,
-    loading: (props) => {
-      const { open = false, onDeny } = props as NotificationPermissionDialogProps;
-      return (
-        <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && onDeny?.()}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Loading...</AlertDialogTitle>
-              <AlertDialogDescription>
-                Preparing notification prompt.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Close</AlertDialogCancel>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      );
-    },
+    loading: () => (
+      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+        <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
+          <div className="flex justify-center">
+            <LoadingIndicator text="Loading notification settings..." />
+          </div>
+        </div>
+      </div>
+    ),
   }
 );
 
@@ -171,24 +137,15 @@ const DeleteTransactionDialog = dynamic<DeleteTransactionDialogProps>(
     ),
   {
     ssr: false,
-    loading: (props) => {
-      const { open = false, onOpenChange } = props as DeleteTransactionDialogProps;
-      return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Loading...</AlertDialogTitle>
-              <AlertDialogDescription>
-                Fetching transaction details.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Close</AlertDialogCancel>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      );
-    },
+    loading: () => (
+      <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+        <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
+          <div className="flex justify-center">
+            <LoadingIndicator text="Loading..." />
+          </div>
+        </div>
+      </div>
+    ),
   }
 );
 
@@ -207,9 +164,6 @@ const UserSettingsDialog = dynamic<UserSettingsDialogProps>(
   }
 );
 
-const USER_ID_COPIED_KEY = 'userIdCopied';
-const NOTIFICATION_PROMPT_KEY = 'notificationPromptShown';
-
 export function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange>('month');
   
@@ -227,7 +181,10 @@ export function Dashboard() {
   const [displayDate, setDisplayDate] = useState('');
   const [isClient, setIsClient] = useState(false);
   
-  const { toast } = useToast();
+  // Transaction state management
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -242,21 +199,11 @@ export function Dashboard() {
   // Use the transactions hook with dateRange
   const {
     transactions,
-    allTransactions,
     isTransactionsLoading,
-    isAllTransactionsLoading,
     visibleTransactions,
     sortOption,
-    transactionToEdit,
-    transactionToDelete,
     setVisibleTransactions,
     setSortOption,
-    setTransactionToEdit,
-    setTransactionToDelete,
-    handleEditClick,
-    handleDeleteClick,
-    handleConfirmDelete,
-    loadMoreTransactions,
     getFilteredTransactions,
     getSortedTransactions,
     getExpenseTransactions,
@@ -271,57 +218,323 @@ export function Dashboard() {
     () => (firestore && user ? collection(firestore, `users/${user.uid}/budgets`) : null),
     [firestore, user]
   );
-  const { data: budgets, isLoading: isBudgetsLoading } = useCollection<Budget>(budgetsQuery);
+  const { data: budgets } = useCollection<Budget>(budgetsQuery);
 
   const finalUserData = userData;
 
-  // Category backfill logic for existing users
-  useEffect(() => {
-    if (!finalUserData || !userDocRef || !user) return;
-    
-    const needsBackfill = 
-      !finalUserData.categories || 
-      !finalUserData.incomeCategories || 
-      finalUserData.categories.length === 0 || 
-      finalUserData.incomeCategories.length === 0 ||
-      !finalUserData.isInitialized;
-
-    if (needsBackfill) {
-      const updates: Partial<UserData> = {};
-      
-      // Backfill expense categories
-      if (!finalUserData.categories || finalUserData.categories.length === 0) {
-        updates.categories = defaultCategories;
-      } else {
-        // Add missing default categories
-        const missingCategories = defaultCategories.filter(cat => !finalUserData.categories?.includes(cat));
-        if (missingCategories.length > 0) {
-          updates.categories = [...(finalUserData.categories || []), ...missingCategories];
-        }
-      }
-      
-      // Backfill income categories
-      if (!finalUserData.incomeCategories || finalUserData.incomeCategories.length === 0) {
-        updates.incomeCategories = DEFAULT_INCOME_CATEGORIES;
-      } else {
-        // Add missing default income categories
-        const missingIncomeCategories = DEFAULT_INCOME_CATEGORIES.filter(cat => !finalUserData.incomeCategories?.includes(cat));
-        if (missingIncomeCategories.length > 0) {
-          updates.incomeCategories = [...(finalUserData.incomeCategories || []), ...missingIncomeCategories];
-        }
-      }
-      
-      // Mark as initialized
-      updates.isInitialized = true;
-      updates.updatedAt = new Date();
-      
-      if (Object.keys(updates).length > 0) {
-        console.log('Backfilling categories for existing user:', updates);
-        updateDocumentNonBlocking(userDocRef, updates);
-      }
+  // Move all useMemo and useCallback hooks before any early returns
+  const getDisplayDate = useCallback((range: DateRange): string => {
+    const now = new Date();
+    switch (range) {
+      case 'daily':
+        return format(now, 'MMMM d, yyyy');
+      case 'week':
+        const weekStart = startOfWeek(now);
+        const weekEnd = endOfWeek(now);
+        return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
+      case 'month':
+        return format(now, 'MMMM yyyy');
+      case 'yearly':
+        return format(now, 'yyyy');
+      default:
+        return format(now, 'MMMM yyyy');
     }
-  }, [finalUserData, userDocRef, user]);
+  }, []);
 
+  const filteredTransactions = useMemo(() => 
+    getFilteredTransactions ? getFilteredTransactions(dateRange, true) : [], // Use all transactions for accurate filtering
+    [getFilteredTransactions, dateRange]
+  );
+
+  const totalBudget = useMemo(() => {
+    if (!budgets || budgets.length === 0) return 0;
+    // Only sum expense budgets for spending calculations
+    return budgets
+      .filter(budget => (budget.type || 'expense') === 'expense')
+      .reduce((total, budget) => total + (budget.MonthlyBudget || 0), 0);
+  }, [budgets]);
+
+  const totalIncomeBudget = useMemo(() => {
+    if (!budgets || budgets.length === 0) return 0;
+    // Sum income budgets separately
+    return budgets
+      .filter(budget => budget.type === 'income')
+      .reduce((total, budget) => total + (budget.MonthlyBudget || 0), 0);
+  }, [budgets]);
+
+  const expenseTransactions = useMemo(() => 
+    getExpenseTransactions ? getExpenseTransactions(filteredTransactions) : [],
+    [getExpenseTransactions, filteredTransactions]
+  );
+
+  const incomeTransactions = useMemo(() => 
+    getIncomeTransactions ? getIncomeTransactions(filteredTransactions) : [],
+    [getIncomeTransactions, filteredTransactions]
+  );
+
+  const totalSpent = useMemo(() => 
+    getTotalSpent ? getTotalSpent(expenseTransactions) : 0,
+    [getTotalSpent, expenseTransactions]
+  );
+
+  const totalIncome = useMemo(() => 
+    getTotalIncome ? getTotalIncome(incomeTransactions) : 0,
+    [getTotalIncome, incomeTransactions]
+  );
+
+  const netIncome = useMemo(() => 
+    getNetIncome ? getNetIncome(filteredTransactions) : 0,
+    [getNetIncome, filteredTransactions]
+  );
+
+  const categories = useMemo(() => finalUserData?.categories || [], [finalUserData?.categories]);
+  const incomeCategories = useMemo(() => finalUserData?.incomeCategories || DEFAULT_INCOME_CATEGORIES, [finalUserData?.incomeCategories]);
+  
+  const categoryColors = useMemo(() => {
+    const colors: Record<string, string> = {};
+    categories.forEach((category, index) => {
+      colors[category] = chartColors[index % chartColors.length];
+    });
+    return colors;
+  }, [categories]);
+
+  const aggregatedData = useMemo(() => 
+    getAggregatedData ? getAggregatedData(expenseTransactions) : [],
+    [getAggregatedData, expenseTransactions]
+  );
+
+  const chartConfig = useMemo(() => {
+    const config: ChartConfig = {};
+    Object.entries(categoryColors).forEach(([category, color]) => {
+      config[category] = { label: category, color };
+    });
+    return config;
+  }, [categoryColors]);
+
+  const sortedTransactions = useMemo(() => {
+    if (!getFilteredTransactions || !getSortedTransactions) return [];
+    const filtered = getFilteredTransactions(dateRange);
+    return getSortedTransactions(filtered);
+  }, [getFilteredTransactions, getSortedTransactions, dateRange]);
+
+  // Handle transaction editing
+  const handleTransactionEdit = useCallback((transaction: Transaction) => {
+    setTransactionToEdit(transaction);
+    setAddTransactionOpen(true);
+  }, []);
+
+  // Clear transaction to edit when drawer closes
+  const handleDrawerOpenChange = useCallback((open: boolean) => {
+    setAddTransactionOpen(open);
+    if (!open) {
+      setTransactionToEdit(null);
+    }
+  }, []);
+
+  // Handle transaction deletion
+  const handleTransactionDelete = useCallback((transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+  }, []);
+
+  // Confirm transaction deletion
+  const handleConfirmTransactionDelete = useCallback(async () => {
+    if (!transactionToDelete || !user || !firestore) return;
+    
+    try {
+      const docRef = doc(firestore, `users/${user.uid}/transactions`, transactionToDelete.id);
+      await deleteDocumentNonBlocking(docRef);
+    } catch (error) {
+      console.error("Failed to delete transaction:", error);
+    } finally {
+      setTransactionToDelete(null);
+    }
+  }, [transactionToDelete, user, firestore]);
+
+  const handleUpdateIncome = useCallback(async (newIncome: number) => {
+    if (!userDocRef) return;
+    
+    try {
+      await updateDocumentNonBlocking(userDocRef, { income: newIncome });
+    } catch (error) {
+      console.error("Failed to update income:", error);
+    }
+  }, [userDocRef]);
+
+  const handleUpdateSavings = useCallback(async (newSavings: number) => {
+    if (!userDocRef) return;
+    
+    try {
+      await updateDocumentNonBlocking(userDocRef, { savings: newSavings });
+    } catch (error) {
+      console.error("Failed to update savings:", error);
+    }
+  }, [userDocRef]);
+
+  // Budget management handlers
+  const handleUpdateBudget = useCallback(async (category: string, newBudget: number, type?: CategoryType) => {
+    if (!user || !firestore) return;
+    
+    try {
+      const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
+      const budgetData = { 
+        Category: category, 
+        MonthlyBudget: newBudget,
+        type: type || 'expense', // Default to expense if no type provided
+        updatedAt: new Date(),
+      };
+      
+      await setDoc(budgetRef, budgetData, { merge: true });
+    } catch (error) {
+      console.error("Failed to update budget:", error);
+    }
+  }, [user, firestore]);
+
+  const handleAddCategory = useCallback(async (category: string, type?: CategoryType) => {
+    if (!userDocRef || !finalUserData) return;
+    
+    try {
+      if (type === 'income') {
+        const updatedIncomeCategories = [
+          ...((finalUserData.incomeCategories || DEFAULT_INCOME_CATEGORIES) as string[]),
+          category,
+        ];
+        await updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
+      } else {
+        const updatedCategories = [...(finalUserData.categories || []), category];
+        await updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
+      }
+      
+      // Initialize with 0 budget and specified type
+      await handleUpdateBudget(category, 0, type);
+    } catch (error) {
+      console.error("Failed to add category:", error);
+    }
+  }, [userDocRef, finalUserData, handleUpdateBudget]);
+
+  const handleDeleteCategory = useCallback(async (category: string) => {
+    if (!userDocRef || !user || !firestore || !finalUserData) return;
+    
+    try {
+      // Remove from user categories
+      const updatedCategories = (finalUserData.categories || []).filter(c => c !== category);
+      const updatedIncomeCategories = (finalUserData.incomeCategories || []).filter(c => c !== category);
+      
+      await updateDocumentNonBlocking(userDocRef, {
+        categories: updatedCategories,
+        incomeCategories: updatedIncomeCategories
+      });
+
+      // Remove budget if exists
+      const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
+      await deleteDocumentNonBlocking(budgetRef);
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+    }
+   }, [userDocRef, user, firestore, finalUserData]);
+
+  const handleUpdateUser = useCallback(async (name: string) => {
+    if (!userDocRef) return;
+    
+    try {
+      await updateDocumentNonBlocking(userDocRef, { name });
+      setUserSettingsOpen(false);
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+    }
+  }, [userDocRef]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Logout Error: ", error);
+    }
+  };
+
+  const handleCopyUserIdToast = () => {
+    if (!user) return;
+    navigator.clipboard.writeText(user.uid);
+  };
+
+  const handleNotificationToggle = async (checked: boolean) => {
+    if (checked) {
+      await handleAllowNotifications();
+    } else {
+      await handleDenyNotifications(true);
+    }
+  };
+
+  const handleAllowNotifications = async () => {
+    try {
+      console.log('[Push Debug] User clicked Allow');
+      
+      // Check if we're on iOS Safari
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      
+      if (isIOS && isSafari && !window.navigator.standalone) {
+        console.log('[Push Debug] iOS Safari detected, showing PWA instructions');
+        setShowNotificationPrompt(false);
+        setShowIosPwaInstructions(true);
+        return;
+      }
+      
+      console.log('[Push Debug] Requesting notification permission...');
+      if (!user || !firestore) {
+        console.error('[Push Debug] User or firestore not available');
+        return;
+      }
+      
+      try {
+        const subscription = await requestNotificationPermission(user.uid, firestore);
+        console.log('[Push Debug] Subscription result:', subscription ? 'Success' : 'Failed');
+        
+        if (subscription) {
+          setIsPushSubscribed(true);
+          console.log('[Push Debug] Subscription successful');
+        }
+      } catch (error) {
+        console.log('[Push Debug] Permission denied or error:', error);
+        setIsPushSubscribed(false);
+      }
+      
+      setShowNotificationPrompt(false);
+      localStorage.setItem(NOTIFICATION_PROMPT_KEY, 'true');
+    } catch (error) {
+      console.error('[Push Debug] Error in handleAllowNotifications:', error);
+      setIsPushSubscribed(false);
+      setShowNotificationPrompt(false);
+    }
+  };
+
+  const handleDenyNotifications = async (fromToggle = false) => {
+    try {
+      console.log('[Push Debug] User denied notifications, fromToggle:', fromToggle);
+      
+      if (fromToggle && isPushSubscribed) {
+        console.log('[Push Debug] Unsubscribing from notifications...');
+        if (!user || !firestore) {
+          console.error('[Push Debug] User or firestore not available');
+          return;
+        }
+        await unsubscribeFromNotifications(user.uid, firestore);
+        
+        if (user && firestore) {
+          // @ts-ignore - Firebase Firestore type compatibility
+          await syncSubscriptionWithFirestore(user.uid, firestore);
+        }
+      }
+      
+      setIsPushSubscribed(false);
+      setShowNotificationPrompt(false);
+      localStorage.setItem(NOTIFICATION_PROMPT_KEY, 'true');
+    } catch (error) {
+      console.error('[Push Debug] Error in handleDenyNotifications:', error);
+    }
+  };
+
+  // All useEffect hooks
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -341,16 +554,17 @@ export function Dashboard() {
       
       setIsPushSubscribed(!!sub);
       const promptShown = localStorage.getItem(NOTIFICATION_PROMPT_KEY);
-      console.log('[Push Debug] Prompt previously shown:', promptShown);
       
-      if (!promptShown && !sub) {
-        console.log('[Push Debug] Showing notification prompt');
+      if (!sub && !promptShown && Notification.permission === 'default') {
+        console.log('[Push Debug] Should show notification prompt');
         setShowNotificationPrompt(true);
       }
     };
 
-    void checkSubscription();
-  }, []);
+    if (isClient) {
+      checkSubscription();
+    }
+  }, [isClient]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !user || !firestore) return;
@@ -358,566 +572,36 @@ export function Dashboard() {
     // @ts-ignore - Firebase Firestore type compatibility
     void syncSubscriptionWithFirestore(user.uid, firestore);
   }, [user, firestore]);
-  
-  const handleSetupSave = async (userData: { name: string }) => {
-    try {
-      if (!user || !firestore) return;
-      
-      const userRef = doc(firestore, 'users', user.uid);
-      await setDoc(userRef, {
-        ...userData,
-        categories: defaultCategories,
-        incomeCategories: DEFAULT_INCOME_CATEGORIES,
-        income: 0,
-        savings: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      
-      console.log('Setup completed, opening budget dialog');
-      setBudgetOpen(true);
-    } catch (error) {
-      console.error('Setup save error:', error);
-    }
-  };
-  
-  const handleCopyUserId = () => {
-    if (!user) return;
-    navigator.clipboard.writeText(user.uid);
-  };
-
-  const handleUpdateIncome = (newIncome: number) => {
-    if (!userDocRef) return;
-    updateDocumentNonBlocking(userDocRef, { income: newIncome });
-  };
-
-  const handleUpdateSavings = (newSavings: number) => {
-    if (!userDocRef) return;
-    updateDocumentNonBlocking(userDocRef, { savings: newSavings });
-  };
-
-  const handleUpdateBudget = (category: string, newBudget: number, type?: CategoryType) => {
-    if (!user || !firestore) return;
-    const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
-    const budgetData = { 
-      Category: category, 
-      MonthlyBudget: newBudget,
-      type: type || 'expense' // Default to expense if no type provided
-    };
-    setDoc(budgetRef, budgetData, { merge: true });
-  };
-
-  const handleAddCategory = (category: string, type?: CategoryType) => {
-    if (!userDocRef || !finalUserData) return;
-    if (type === 'income') {
-      const updatedIncomeCategories = [
-        ...((finalUserData.incomeCategories || DEFAULT_INCOME_CATEGORIES) as string[]),
-        category,
-      ];
-      updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
-    } else {
-      const updatedCategories = [...(finalUserData.categories || []), category];
-      updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
-    }
-    handleUpdateBudget(category, 0, type); // Initialize with 0 budget and specified type
-  };
-
-  const handleDeleteCategory = async (category: string) => {
-    if (!userDocRef || !user || !firestore || !finalUserData) return;
-    
-    // Protect 'Others' category from deletion
-    if (category === 'Others') {
-      toast({
-        variant: "destructive",
-        title: "Cannot Delete Category",
-        description: "'Others' is a protected category and cannot be deleted.",
-      });
-      return;
-    }
-    
-    // Determine category type and target reassignment category
-    const isIncomeCategory = (finalUserData.incomeCategories || []).includes(category);
-    const targetCategory = isIncomeCategory ? 'Transfer' : 'Others';
-    
-    // Ensure target category exists in the appropriate list
-    if (isIncomeCategory && !(finalUserData.incomeCategories || []).includes(targetCategory)) {
-      toast({
-        variant: "destructive",
-        title: "Cannot Delete Category",
-        description: "Target reassignment category 'Transfer' not found in income categories.",
-      });
-      return;
-    }
-    
-    if (!isIncomeCategory && !(finalUserData.categories || []).includes(targetCategory)) {
-      toast({
-        variant: "destructive",
-        title: "Cannot Delete Category",
-        description: "Target reassignment category 'Others' not found in expense categories.",
-      });
-      return;
-    }
-
-    try {
-      // Count transactions that will be reassigned
-      const transactionsQuery = query(
-        collection(firestore, `users/${user.uid}/transactions`),
-        orderBy('Date', 'desc')
-      );
-      const transactionsSnapshot = await getDocs(transactionsQuery);
-      const transactionsToReassign = transactionsSnapshot.docs.filter((doc: QueryDocumentSnapshot<DocumentData>) => 
-        doc.data().Category === category
-      );
-      
-      // Count recurring transactions that will be reassigned
-      const recurringQuery = query(
-        collection(firestore, `users/${user.uid}/recurringTransactions`)
-      );
-      const recurringSnapshot = await getDocs(recurringQuery);
-      const recurringToReassign = recurringSnapshot.docs.filter((doc: QueryDocumentSnapshot<DocumentData>) => 
-        doc.data().Category === category
-      );
-      
-      const totalItems = transactionsToReassign.length + recurringToReassign.length;
-      
-      if (totalItems > 0) {
-        // Show confirmation dialog
-        const confirmed = window.confirm(
-          `This will delete the "${category}" category and reassign ${totalItems} item(s) to "${targetCategory}". Continue?`
-        );
-        
-        if (!confirmed) return;
-      }
-
-      // Batch reassign transactions (process in chunks of 400 to avoid Firestore limits)
-      const batchSize = 400;
-      for (let i = 0; i < transactionsToReassign.length; i += batchSize) {
-        const batch = transactionsToReassign.slice(i, i + batchSize);
-        const batchPromises = batch.map((doc: QueryDocumentSnapshot<DocumentData>) => {
-          const transactionRef = doc.ref;
-          return updateDocumentNonBlocking(transactionRef, { 
-            Category: targetCategory,
-            updatedAt: new Date()
-          });
-        });
-        await Promise.all(batchPromises);
-      }
-      
-      // Batch reassign recurring transactions
-      for (let i = 0; i < recurringToReassign.length; i += batchSize) {
-        const batch = recurringToReassign.slice(i, i + batchSize);
-        const batchPromises = batch.map((doc: QueryDocumentSnapshot<DocumentData>) => {
-          const recurringRef = doc.ref;
-          return updateDocumentNonBlocking(recurringRef, { 
-            Category: targetCategory,
-            updatedAt: new Date()
-          });
-        });
-        await Promise.all(batchPromises);
-      }
-
-      // Remove category from the appropriate list
-      if (isIncomeCategory) {
-        const updatedIncomeCategories = (finalUserData.incomeCategories || []).filter((c: string) => c !== category);
-        updateDocumentNonBlocking(userDocRef, { incomeCategories: updatedIncomeCategories });
-      } else {
-        const updatedCategories = (finalUserData.categories || []).filter((c: string) => c !== category);
-        updateDocumentNonBlocking(userDocRef, { categories: updatedCategories });
-      }
-
-      // Delete the budget document
-      const budgetRef = doc(firestore, `users/${user.uid}/budgets`, category);
-      deleteDocumentNonBlocking(budgetRef);
-      
-      // Show success message
-      toast({
-        title: "Category Deleted",
-        description: totalItems > 0 
-          ? `"${category}" deleted and ${totalItems} item(s) reassigned to "${targetCategory}".`
-          : `"${category}" category deleted successfully.`,
-      });
-      
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete category. Please try again.",
-      });
-    }
-  };
-
-
-  const handleUpdateUser = (name: string) => {
-    if (userDocRef) {
-      updateDocumentNonBlocking(userDocRef, { name });
-      setUserSettingsOpen(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    setShowLogoutConfirm(false);
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Logout Error: ", error);
-      toast({
-        variant: "destructive",
-        title: "Logout Failed",
-        description: "Could not log you out. Please try again.",
-      });
-    }
-  };
-
-  const handleCopyUserIdToast = () => {
-    if (!user) return;
-    navigator.clipboard.writeText(user.uid);
-    localStorage.setItem(USER_ID_COPIED_KEY, 'true');
-  };
-
-  const handleNotificationToggle = async (checked: boolean) => {
-    console.log('[Push Debug] Toggle clicked:', checked);
-    console.log('[Push Debug] Current permission:', Notification.permission);
-    
-    if (checked) {
-        await handleAllowNotifications();
-    } else {
-        await handleDenyNotifications(true); // true to indicate it's from the toggle
-    }
-  };
-
-  const handleAllowNotifications = async () => {
-    console.log('[Push Debug] handleAllowNotifications called');
-    
-    if (!user || !firestore || typeof window === 'undefined') {
-      console.log('[Push Debug] Missing requirements:', { user: !!user, firestore: !!firestore, window: typeof window !== 'undefined' });
-      return;
-    }
-
-    localStorage.setItem(NOTIFICATION_PROMPT_KEY, 'true');
-    setShowNotificationPrompt(false);
-
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isStandalone = (navigator as any).standalone === true || 
-      window.matchMedia('(display-mode: standalone)').matches;
-    
-    console.log('[Push Debug] Device info:', { 
-      isIos, 
-      isStandalone, 
-      userAgent: navigator.userAgent.substring(0, 100),
-      notificationPermission: Notification.permission
-    });
-
-    if (isIos && !isStandalone) {
-        console.log('[Push Debug] iOS device not in standalone mode, showing PWA instructions');
-        setShowIosPwaInstructions(true);
-        return;
-    }
-
-    console.log('[Push Debug] Attempting to request notification permission...');
-    setIsPushSubscribed(true);
-    try {
-        // @ts-ignore - Firebase Firestore type compatibility
-        const subscription = await requestNotificationPermission(user.uid, firestore);
-        
-        if (subscription) {
-          console.log('[Push Debug] Subscription successful:', {
-            endpoint: subscription.endpoint.substring(0, 50) + '...',
-            hasKeys: !!(subscription.toJSON().keys?.auth && subscription.toJSON().keys?.p256dh)
-          });
-          setIsPushSubscribed(true);
-          
-          // Test notification after successful subscription
-          if (isIos) {
-            console.log('[Push Debug] Testing notification on iOS...');
-            try {
-              // Use Firebase Functions endpoint instead of API route
-              const testResponse = await fetch('https://us-central1-piggybankpwa.cloudfunctions.net/transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  UserID: user.uid,
-                  Data: {
-                    Amount: 0.01,
-                    Category: 'Test',
-                    Notes: 'iOS notification test',
-                    Type: 'expense'
-                  }
-                })
-              });
-              const testResult = await testResponse.json();
-              console.log('[Push Debug] Test notification result:', testResult);
-            } catch (testError) {
-              console.error('[Push Debug] Test notification failed:', testError);
-            }
-          }
-        }
-        
-        console.log('[Push Debug] Notification permission request successful');
-    } catch (error) {
-        console.error("[Push Debug] Failed to subscribe:", error);
-        setIsPushSubscribed(false);
-        
-        // Show more helpful error message for iOS
-        if (isIos) {
-          alert(`iOS Notification Setup Failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nTips:\n1. Make sure this PWA is added to your home screen\n2. Check Safari Settings > Notifications\n3. Try refreshing and enabling again`);
-        }
-    }
-  };
-
-  const handleDenyNotifications = async (fromToggle = false) => {
-    console.log('[Push Debug] handleDenyNotifications called, fromToggle:', fromToggle);
-    
-    localStorage.setItem(NOTIFICATION_PROMPT_KEY, 'true');
-    setShowNotificationPrompt(false);
-    if (fromToggle && user && firestore) {
-        console.log('[Push Debug] Unsubscribing from notifications...');
-        setIsPushSubscribed(false);
-        try {
-            // @ts-ignore - Firebase Firestore type compatibility
-            await unsubscribeFromNotifications(user.uid, firestore);
-            console.log('[Push Debug] Successfully unsubscribed');
-        } catch (error) {
-            console.error("[Push Debug] Failed to unsubscribe:", error);
-            setIsPushSubscribed(true);
-        }
-    }
-  };
-
-
-  const dateFilterRange = useMemo(() => {
-    const today = new Date();
-    switch (dateRange) {
-      case 'daily':
-        return { start: startOfDay(today), end: endOfDay(today) };
-      case 'week':
-        return { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
-      case 'month':
-        return { start: startOfMonth(today), end: endOfMonth(today) };
-      case 'yearly':
-        return { start: startOfYear(today), end: endOfYear(today) };
-      case 'all':
-      default:
-        return { start: null, end: null };
-    }
-  }, [dateRange]);
-
-  const getDisplayDate = useCallback((range: DateRange): string => {
-    if (!transactions?.length && range !== 'all') return "No data for this period";
-
-    const { start, end } = dateFilterRange;
-
-    switch (range) {
-      case 'daily':
-        return start ? format(start, 'd MMM yyyy') : "Today";
-      case 'week':
-        return (start && end) ? `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}` : "This Week";
-      case 'month':
-        return start ? format(start, 'MMMM yyyy') : "This Month";
-      case 'yearly':
-        return start ? format(start, 'yyyy') : "This Year";
-      case 'all':
-      default:
-        if (!transactions?.length) return "All Time";
-        const oldestLoaded = transactions[transactions.length - 1]?.Date;
-        const mostRecentLoaded = transactions[0]?.Date;
-
-        if (!oldestLoaded || !mostRecentLoaded) return "All Time";
-        
-        // Handle both date formats
-        let oldestDate: Date, mostRecentDate: Date;
-        
-        if (typeof oldestLoaded === 'string') {
-          oldestDate = new Date(oldestLoaded);
-        } else if (oldestLoaded && typeof oldestLoaded === 'object' && 'seconds' in oldestLoaded) {
-          oldestDate = toDate(oldestLoaded.seconds * 1000);
-        } else {
-          return "All Time";
-        }
-        
-        if (typeof mostRecentLoaded === 'string') {
-          mostRecentDate = new Date(mostRecentLoaded);
-        } else if (mostRecentLoaded && typeof mostRecentLoaded === 'object' && 'seconds' in mostRecentLoaded) {
-          mostRecentDate = toDate(mostRecentLoaded.seconds * 1000);
-        } else {
-          return "All Time";
-        }
-
-        if (isNaN(oldestDate.getTime()) || isNaN(mostRecentDate.getTime())) return "All Time";
-        
-        return `${format(oldestDate, 'd MMM yyyy')} - ${format(mostRecentDate, 'd MMM yyyy')}`;
-    }
-  }, [dateFilterRange, transactions]);
 
   useEffect(() => {
-    if (!isClient) return;
-    setDisplayDate(getDisplayDate(dateRange));
+    if (isClient) {
+      setDisplayDate(getDisplayDate(dateRange));
+    }
   }, [dateRange, getDisplayDate, isClient]);
 
-  // Calculate filtered transactions using ALL transactions for accurate totals
-  const filteredTransactions = useMemo(() => 
-    getFilteredTransactions(dateRange, true), // Use all transactions for accurate filtering
-    [getFilteredTransactions, dateRange]
-  );
-  
-  const totalBudget = useMemo(() => {
-    if (!finalUserData) return 0;
-    const monthlyBudget = (finalUserData.income || 0) - (finalUserData.savings || 0);
-    const now = new Date();
+  // Show loading screen if any critical data is still loading
+  const isLoading = isUserLoading || isUserDataLoading || isTransactionsLoading || !finalUserData || !transactions;
 
-    switch (dateRange) {
-      case 'daily':
-        return monthlyBudget / getDaysInMonth(now);
-      case 'week':
-        return (monthlyBudget / getDaysInMonth(now)) * 7;
-      case 'month':
-        return monthlyBudget;
-      case 'yearly':
-        return monthlyBudget * 12;
-      case 'all':
-         if (!transactions || transactions.length === 0) return monthlyBudget;
-        const oldestLoaded = transactions[transactions.length - 1]?.Date;
-        if (!oldestLoaded) return monthlyBudget;
-        
-        let oldestDate: Date;
-        if (typeof oldestLoaded === 'string') {
-          oldestDate = new Date(oldestLoaded);
-        } else if (oldestLoaded && typeof oldestLoaded === 'object' && 'seconds' in oldestLoaded) {
-          oldestDate = toDate(oldestLoaded.seconds * 1000);
-        } else {
-          return monthlyBudget;
-        }
-        
-        const monthSpan = differenceInMonths(now, oldestDate) + 1;
-        return monthlyBudget * Math.max(1, monthSpan);
-      default:
-        return monthlyBudget;
-    }
-  }, [finalUserData, dateRange, transactions]);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <LoadingIndicator />
+      </div>
+    );
+  }
 
-  const expenseTransactions = useMemo(() => 
-    getExpenseTransactions(filteredTransactions),
-    [getExpenseTransactions, filteredTransactions]
-  );
-
-  const incomeTransactions = useMemo(() => 
-    getIncomeTransactions(filteredTransactions),
-    [getIncomeTransactions, filteredTransactions]
-  );
-
-  const totalSpent = useMemo(() => 
-    getTotalSpent(expenseTransactions),
-    [getTotalSpent, expenseTransactions]
-  );
-
-  const totalIncome = useMemo(() => 
-    getTotalIncome(incomeTransactions),
-    [getTotalIncome, incomeTransactions]
-  );
-
-  const netIncome = useMemo(() => 
-    getNetIncome(filteredTransactions),
-    [getNetIncome, filteredTransactions]
-  );
-
-  const categories = finalUserData?.categories || defaultCategories;
-  const incomeCategories = finalUserData?.incomeCategories || DEFAULT_INCOME_CATEGORIES;
-  const categoryColors = useMemo(() => {
-    return categories.reduce((acc: Record<string, string>, category: string, index: number) => {
-      acc[category] = chartColors[index % chartColors.length];
-      return acc;
-    }, {} as Record<string, string>);
-  }, [categories]);
-
-  const aggregatedData = useMemo(() => 
-    getAggregatedData(expenseTransactions),
-    [getAggregatedData, expenseTransactions]
-  );
-
-  const chartConfig = useMemo(() => {
-    return Object.keys(categoryColors).reduce((acc, category) => {
-      acc[category] = {
-        label: category,
-        color: categoryColors[category],
-      };
-      return acc;
-    }, {} as ChartConfig);
-  }, [categoryColors]);
-
-  const sortedTransactions = useMemo(() => {
-    // Use limited transactions for display, but filtered by date range
-    const displayTransactions = getFilteredTransactions(dateRange, false); // Use limited transactions for display
-    return getSortedTransactions(displayTransactions);
-  }, [getFilteredTransactions, getSortedTransactions, dateRange]);
-
-  useEffect(() => {
-    // When the dialog closes, reset the transaction to edit
-    if (!isAddTransactionOpen) {
-      setTransactionToEdit(null);
-    }
-  }, [isAddTransactionOpen]);
-
-  const isLoading = isUserLoading || isUserDataLoading || (user && finalUserData !== null && (isTransactionsLoading || isAllTransactionsLoading || isBudgetsLoading));
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Dashboard state:', {
-      user: !!user,
-      userId: user?.uid,
-      finalUserData,
-      isUserDataLoading,
-      isUserLoading,
-      isLoading,
-      hasFirestore: !!firestore,
-      userDocRef: !!userDocRef
-    });
-  }, [user, finalUserData, isUserDataLoading, isUserLoading, isLoading, firestore, userDocRef]);
-
-  // If we're in static export mode and no Firebase services are available, show a message
+  // Early return for non-browser environments
   if (typeof window !== 'undefined' && !firestore) {
     return (
-      <div className="flex flex-col min-h-screen bg-background items-center justify-center p-6">
-        <div className="w-full max-w-[428px] text-center space-y-4">
-          <h1 className="text-2xl font-bold">Firebase Setup Required</h1>
-          <p className="text-muted-foreground">
-            To use this app, you need to:
-          </p>
-          <div className="text-left space-y-2 bg-muted p-4 rounded-lg">
-            <p>1. Enable <strong>Authentication</strong> in Firebase Console</p>
-            <p>2. Create <strong>Firestore Database</strong> in Firebase Console</p>
-            <p>3. Enable <strong>Email/Password</strong> sign-in method</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <LoadingIndicator />
           <p className="text-sm text-muted-foreground">
-            Visit: <a href="https://console.firebase.google.com/project/piggybankpwa" className="text-blue-500 underline" target="_blank" rel="noopener noreferrer">Firebase Console</a>
+            Connecting to database...
           </p>
         </div>
       </div>
     );
-  }
-
-  if (isLoading) {
-    return <SkeletonLoader />;
-  }
-
-  // If user is authenticated but has no profile data (it's null after loading), show setup sheet
-  // Also check that we're not still loading user data
-  if (user && finalUserData === null && !isUserDataLoading) {
-    return (
-      <div className="flex flex-col min-h-screen bg-background items-center justify-center">
-          <div className="w-full max-w-[428px] p-6">
-              <SetupSheet 
-                onSave={handleSetupSave} 
-                onCopyUserId={handleCopyUserId}
-                userId={user.uid}
-              />
-          </div>
-      </div>
-    );
-  }
-
-  if (!user || !finalUserData || transactions === undefined || budgets === undefined || allTransactions === undefined) {
-    return <SkeletonLoader />;
   }
 
   return (
@@ -947,15 +631,12 @@ export function Dashboard() {
            <DeleteTransactionDialog
               open={!!transactionToDelete}
               onOpenChange={() => setTransactionToDelete(null)}
-              onConfirm={handleConfirmDelete}
+              onConfirm={handleConfirmTransactionDelete}
               transaction={transactionToDelete}
            />
-          <Dialog open={isUserSettingsOpen} onOpenChange={setUserSettingsOpen}>
-            <DialogContent className="max-w-[400px]" onOpenAutoFocus={(e) => e.preventDefault()}>
-                <DialogHeader>
-                  <DialogTitle>User Settings</DialogTitle>
-                </DialogHeader>
-                <UserSettingsDialog
+           <Dialog open={isUserSettingsOpen} onOpenChange={setUserSettingsOpen}>
+            <DialogContent>
+              <UserSettingsDialog
                   user={finalUserData}
                   userId={user?.uid}
                   onSave={handleUpdateUser}
@@ -982,7 +663,7 @@ export function Dashboard() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="text-2xl font-bold">Welcome,</h1>
-              <h1 className="text-primary text-3xl font-bold">{finalUserData.name}</h1>
+              <h1 className="text-primary text-3xl font-bold">{finalUserData?.name || 'User'}</h1>
             </div>
             <div className="flex flex-col items-end">
                 <div className="flex items-center gap-2">
@@ -1004,7 +685,7 @@ export function Dashboard() {
                       </ScrollArea>
                     </DrawerContent>
                   </Drawer>
-                  
+
                   <Drawer open={isSettingsOpen} onOpenChange={setSettingsOpen}>
                       <DrawerTrigger asChild>
                            <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -1093,6 +774,7 @@ export function Dashboard() {
               </div>
           </div>
           
+          {/* Balance Component */}
           <Balance
             totalSpending={totalSpent}
             totalIncome={totalIncome}
@@ -1105,19 +787,27 @@ export function Dashboard() {
             onDateRangeChange={setDateRange}
             displayDate={displayDate}
           />
-          <TransactionsTable 
-            data={sortedTransactions} 
-            chartConfig={chartConfig}
-            hasMore={transactions ? transactions.length === visibleTransactions : false}
-            onLoadMore={() => setVisibleTransactions(v => v + 20)}
-            sortOption={sortOption}
-            onSortChange={setSortOption}
-            onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
-          />
+
+          {/* Transactions Table */}
+          {transactions && transactions.length > 0 ? (
+            <TransactionsTable 
+              data={sortedTransactions} 
+              chartConfig={chartConfig}
+              hasMore={transactions ? transactions.length === visibleTransactions : false}
+              onLoadMore={() => setVisibleTransactions(v => v + 20)}
+              sortOption={sortOption}
+              onSortChange={setSortOption}
+              onEdit={handleTransactionEdit}
+              onDelete={handleTransactionDelete}
+            />
+          ) : (
+            <EmptyTransactions 
+              onAddTransaction={() => setAddTransactionOpen(true)}
+            />
+          )}
         </main>
 
-        <Drawer open={isAddTransactionOpen} onOpenChange={setAddTransactionOpen}>
+        <Drawer open={isAddTransactionOpen} onOpenChange={handleDrawerOpenChange}>
             <DrawerTrigger asChild>
                 <Button 
                     variant="default"
@@ -1137,7 +827,7 @@ export function Dashboard() {
                 />
             </DrawerContent>
         </Drawer>
-        
+
         <Drawer open={isReportsOpen} onOpenChange={setReportsOpen}>
           <DrawerContent>
             <ReportsPage allTransactions={transactions || []} categories={categories} />

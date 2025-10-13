@@ -122,7 +122,7 @@ export function AddTransactionForm({ setOpen, userId, transactionToEdit, categor
     
     const transactionData = {
         ...values,
-        Date: new Date(),
+        Date: transactionToEdit ? transactionToEdit.Date : new Date(), // Preserve original date when editing
         Type: transactionType,
         userId,
     };
@@ -130,14 +130,18 @@ export function AddTransactionForm({ setOpen, userId, transactionToEdit, categor
     try {
         if (transactionToEdit) {
             const transactionRef = doc(firestore, `users/${userId}/transactions`, transactionToEdit.id);
-            updateDocumentNonBlocking(transactionRef, transactionData);
+            await updateDocumentNonBlocking(transactionRef, transactionData);
+            toast({
+                title: "Success",
+                description: "Transaction updated successfully.",
+            });
         } else {
             const transactionsCollection = collection(firestore, `users/${userId}/transactions`);
             await addDocumentNonBlocking(transactionsCollection, transactionData);
         }
 
-        // Handle recurring transaction creation
-        if (values.isRecurring && values.frequency && values.nextDueDate) {
+        // Handle recurring transaction creation (only for new transactions)
+        if (!transactionToEdit && values.isRecurring && values.frequency && values.nextDueDate) {
           const recurringTransactionData = {
             Amount: values.Amount,
             Type: transactionType,
@@ -153,14 +157,18 @@ export function AddTransactionForm({ setOpen, userId, transactionToEdit, categor
           const recurringCollection = collection(firestore, `users/${userId}/recurringTransactions`);
           await addDocumentNonBlocking(recurringCollection, recurringTransactionData);
           
-          // Keep toast only for recurring transactions
           toast({
               title: "Success",
-              description: `Transaction ${transactionToEdit ? 'updated' : 'added'} successfully with recurring schedule.`,
+              description: "Transaction added successfully with recurring schedule.",
           });
         }
     } catch (error) {
         console.error('Failed to save transaction', error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: `Failed to ${transactionToEdit ? 'update' : 'add'} transaction.`,
+        });
     } finally {
         setIsLoading(false);
         setOpen(false);

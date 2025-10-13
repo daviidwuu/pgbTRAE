@@ -60,7 +60,8 @@ export function Balance({
 
   const spendingPercentage = budget > 0 ? (totalSpending / budget) * 100 : 0;
   const isOverBudget = spendingPercentage >= 100;
-  const amountLeft = budget - totalSpending;
+  const amountLeft = Math.max(0, budget - totalSpending); // Ensure non-negative
+  // Reality calculation: Income minus expenses minus savings goal
   const realityAmount = totalIncome - totalSpending - savingsGoal;
 
   const handleAmountClick = () => {
@@ -78,12 +79,12 @@ export function Balance({
       case 'left':
         return {
           main: `$${amountLeft.toFixed(2)}`,
-          suffix: ' left'
+          suffix: amountLeft > 0 ? ' left in budget' : ' over budget'
         };
       case 'reality':
         return {
-          main: `$${realityAmount.toFixed(2)}`,
-          suffix: ' available'
+          main: `$${Math.abs(realityAmount).toFixed(2)}`,
+          suffix: realityAmount >= 0 ? ' available' : ' deficit'
         };
       default: // 'spent'
         return {
@@ -122,7 +123,11 @@ export function Balance({
               >
                 <div className="text-3xl font-bold">
                   <span className="text-3xl font-bold">{displayContent.main}</span>
-                  <span className="text-lg text-muted-foreground font-normal">{displayContent.suffix}</span>
+                  <span className={`text-lg font-normal ${
+                    viewMode === 'left' && amountLeft <= 0 ? 'text-red-500' :
+                    viewMode === 'reality' && realityAmount < 0 ? 'text-red-500' :
+                    'text-muted-foreground'
+                  }`}>{displayContent.suffix}</span>
                 </div>
               </button>
             </div>

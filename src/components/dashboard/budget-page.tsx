@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { type Budget, type User, type CategoryType } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,10 +56,22 @@ function BudgetEditDrawer({ category, currentBudget, currentType, onUpdateBudget
   const [budgetValue, setBudgetValue] = useState(String(currentBudget));
   const [categoryType, setCategoryType] = useState<CategoryType>(currentType);
 
+  // Reset state when category changes
+  useEffect(() => {
+    setBudgetValue(String(currentBudget));
+    setCategoryType(currentType);
+  }, [category, currentBudget, currentType]);
+
   const handleUpdate = () => {
     const newValue = parseFloat(budgetValue);
-    if (!isNaN(newValue)) {
+    if (!isNaN(newValue) && newValue >= 0) {
       onUpdateBudget(category, newValue, categoryType);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleUpdate();
     }
   };
 
@@ -106,19 +118,23 @@ function BudgetEditDrawer({ category, currentBudget, currentType, onUpdateBudget
             <Input
               type="number"
               step="0.01"
+              min="0"
               inputMode="decimal"
               value={budgetValue}
               onChange={(e) => setBudgetValue(e.target.value)}
-              onBlur={handleUpdate}
+              onKeyPress={handleKeyPress}
               placeholder="0.00"
               className="h-auto w-full border-none bg-transparent text-center text-3xl font-bold pl-8 placeholder:text-3xl placeholder:font-bold"
+              autoFocus
             />
           </div>
         </div>
       </div>
-      <DrawerClose asChild>
-        <Button className="w-full" onClick={handleUpdate}>Done</Button>
-      </DrawerClose>
+      <div className="p-4 pt-0">
+        <Button className="w-full" onClick={handleUpdate}>
+          Update Budget
+        </Button>
+      </div>
     </DrawerContent>
   );
 }
@@ -198,6 +214,11 @@ export function BudgetPage({
 
   // Add default expense categories that don't have budgets yet
   const defaultExpenseCategoriesToShow = DEFAULT_EXPENSE_CATEGORIES.filter(
+    category => !budgets.some(b => b.Category === category)
+  );
+
+  // Add user expense categories that don't have budgets yet
+  const userExpenseCategoriesToShow = userCategories.filter(
     category => !budgets.some(b => b.Category === category)
   );
 
@@ -302,7 +323,8 @@ export function BudgetPage({
                   {allCategories.map((category: string) => {
                     const categoryType = getCategoryType(category);
                     const typeInfo = getCategoryTypeInfo(categoryType);
-                    const isDefaultIncome = (DEFAULT_INCOME_CATEGORIES as readonly string[]).includes(category);
+                    // Allow deletion of all categories now - no restrictions
+                    const isDeletable = true;
                     
                     return (
                       <div key={category} className="flex items-center justify-between rounded-md border p-3">
@@ -312,7 +334,7 @@ export function BudgetPage({
                             {typeInfo.label}
                           </Badge>
                         </div>
-                        {!isDefaultIncome && (
+                        {isDeletable && (
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -363,7 +385,7 @@ export function BudgetPage({
                   <button 
                     key={budget.Category} 
                     onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-muted/50 transition-colors"
                   >
                     <span className="font-medium truncate pr-2">{budget.Category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -379,7 +401,7 @@ export function BudgetPage({
                   <button 
                     key={category} 
                     onClick={() => setEditingCategory(category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-muted/50 transition-colors"
                   >
                     <span className="font-medium truncate pr-2">{category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -394,7 +416,7 @@ export function BudgetPage({
           )}
 
           {/* Expense Categories */}
-          {(expenseBudgets.length > 0 || defaultExpenseCategoriesToShow.length > 0) && (
+          {(expenseBudgets.length > 0 || defaultExpenseCategoriesToShow.length > 0 || userExpenseCategoriesToShow.length > 0) && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-red-500" />
@@ -406,7 +428,7 @@ export function BudgetPage({
                   <button 
                     key={budget.Category} 
                     onClick={() => setEditingCategory(budget.Category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-muted/50 transition-colors"
                   >
                     <span className="font-medium truncate pr-2">{budget.Category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -417,12 +439,31 @@ export function BudgetPage({
                   </button>
                 ))}
                 
+                {/* User expense categories without budgets */}
+                {userExpenseCategoriesToShow.map((category) => (
+                  <button 
+                    key={category} 
+                    onClick={() => setEditingCategory(category)}
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-muted/50 transition-colors"
+                  >
+                    <span className="font-medium truncate pr-2">{category}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="font-medium text-muted-foreground">
+                        ${formatBudgetAmount(0).replace('$', '')}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        Custom
+                      </Badge>
+                    </div>
+                  </button>
+                ))}
+                
                 {/* Default expense categories without budgets */}
                 {defaultExpenseCategoriesToShow.map((category) => (
                   <button 
                     key={category} 
                     onClick={() => setEditingCategory(category)}
-                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border"
+                    className="flex items-center justify-between gap-4 w-full p-3 rounded-md border hover:bg-muted/50 transition-colors"
                   >
                     <span className="font-medium truncate pr-2">{category}</span>
                     <div className="flex items-center gap-2 flex-shrink-0">
