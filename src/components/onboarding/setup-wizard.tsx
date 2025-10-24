@@ -168,66 +168,68 @@ export function SetupWizard() {
   const CurrentStepComponent = WIZARD_STEPS[currentStep].component;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">
-      <Card className="w-full max-w-2xl">
-        <CardContent className="p-8">
-          {/* Progress Bar */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                Step {currentStep + 1} of {WIZARD_STEPS.length}
-              </h2>
-              <span className="text-sm font-medium text-muted-foreground">
-                {Math.round(progress)}%
-              </span>
-            </div>
-            <Progress value={progress} className="h-2" />
+    <div className="h-screen flex flex-col bg-gradient-to-br from-background to-muted/20">
+      <div className="flex-1 flex flex-col p-4 max-w-md mx-auto w-full">
+        {/* Progress Bar - Fixed at top */}
+        <div className="flex-shrink-0 mb-6 pt-2">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xs font-medium text-muted-foreground">
+              Step {currentStep + 1} of {WIZARD_STEPS.length}
+            </h2>
+            <span className="text-xs font-medium text-muted-foreground">
+              {Math.round(progress)}%
+            </span>
           </div>
+          <Progress value={progress} className="h-1.5" />
+        </div>
 
-          {/* Current Step */}
-          <div className="mb-8">
-            <CurrentStepComponent
-              data={wizardData}
-              updateData={updateWizardData}
-              onNext={nextStep}
-              onComplete={completeWizard}
-              isLoading={isLoading}
-            />
-          </div>
+        {/* Current Step - Flexible content area */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <CurrentStepComponent
+            data={wizardData}
+            updateData={updateWizardData}
+            onNext={nextStep}
+            onComplete={completeWizard}
+            isLoading={isLoading}
+          />
+        </div>
 
-          {/* Navigation */}
-          <div className="flex justify-between">
+        {/* Navigation - Fixed at bottom */}
+        <div className="flex-shrink-0 pt-4 pb-4">
+          <div className="flex justify-between gap-3">
             <Button
               variant="outline"
               onClick={prevStep}
               disabled={currentStep === 0}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 flex-1"
+              size="sm"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3 w-3" />
               Previous
             </Button>
 
             {currentStep < WIZARD_STEPS.length - 1 ? (
               <Button
                 onClick={nextStep}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 flex-1"
+                size="sm"
               >
                 Next
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3 w-3" />
               </Button>
             ) : (
               <Button
                 onClick={completeWizard}
                 disabled={isLoading}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 flex-1"
+                size="sm"
               >
-                Complete Setup
-                <ChevronRight className="h-4 w-4" />
+                {isLoading ? "Setting up..." : "Complete Setup"}
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

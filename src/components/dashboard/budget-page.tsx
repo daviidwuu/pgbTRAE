@@ -318,7 +318,7 @@ export function BudgetPage({
               </div>
               
               {/* Categories List */}
-              <ScrollArea className="h-64 mt-4 scrollbar-hide">
+              <ScrollArea className="h-[60vh] mt-4 scrollbar-hide">
                 <div className="space-y-2 px-4">
                   {allCategories.map((category: string) => {
                     const categoryType = getCategoryType(category);

@@ -225,13 +225,33 @@ export function Dashboard() {
 
   const totalBudget = useMemo(() => {
     if (!budgets || budgets.length === 0) return 0;
-    // Only sum expense budgets for spending calculations
-    return budgets
+    
+    // Get monthly expense budget
+    const monthlyExpenseBudget = budgets
       .filter(budget => (budget.type || 'expense') === 'expense')
       .reduce((total, budget) => total + (budget.MonthlyBudget || 0), 0);
-  }, [budgets]);
+    
+    // Adjust budget based on date range
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    
+    switch (dateRange) {
+      case 'daily':
+        return monthlyExpenseBudget / daysInMonth;
+      case 'week':
+        return (monthlyExpenseBudget / daysInMonth) * 7;
+      case 'month':
+        return monthlyExpenseBudget;
+      case 'yearly':
+        return monthlyExpenseBudget * 12;
+      case 'all':
+        return monthlyExpenseBudget; // Default to monthly for 'all'
+      default:
+        return monthlyExpenseBudget;
+    }
+  }, [budgets, dateRange]);
 
-  const totalIncomeBudget = useMemo(() => {
+  const budgetIncome = useMemo(() => {
     if (!budgets || budgets.length === 0) return 0;
     // Sum income budgets separately
     return budgets
@@ -254,7 +274,7 @@ export function Dashboard() {
     [getTotalSpent, expenseTransactions]
   );
 
-  const totalIncome = useMemo(() => 
+  const realIncome = useMemo(() => 
     getTotalIncome ? getTotalIncome(incomeTransactions) : 0,
     [getTotalIncome, incomeTransactions]
   );
@@ -348,6 +368,35 @@ export function Dashboard() {
   }, [userDocRef]);
 
   // Budget management handlers
+  // Auto-calculate savings goal when budgets change
+  useEffect(() => {
+    const calculateAndUpdateSavings = async () => {
+      if (!userDocRef || !budgets || budgets.length === 0) return;
+      
+      try {
+        // Calculate savings goal: Income Budget - Expense Budget
+        const totalIncomeBudget = budgets
+          .filter(budget => budget.type === 'income')
+          .reduce((total, budget) => total + (budget.MonthlyBudget || 0), 0);
+        
+        const totalExpenseBudget = budgets
+          .filter(budget => (budget.type || 'expense') === 'expense')
+          .reduce((total, budget) => total + (budget.MonthlyBudget || 0), 0);
+        
+        const calculatedSavings = Math.max(0, totalIncomeBudget - totalExpenseBudget);
+        
+        // Only update if the calculated savings is different from current
+        if (finalUserData?.savings !== calculatedSavings) {
+          await updateDocumentNonBlocking(userDocRef, { savings: calculatedSavings });
+        }
+      } catch (error) {
+        console.error("Failed to auto-calculate savings:", error);
+      }
+    };
+    
+    calculateAndUpdateSavings();
+  }, [budgets, userDocRef, finalUserData?.savings]);
+
   const handleUpdateBudget = useCallback(async (category: string, newBudget: number, type?: CategoryType) => {
     if (!user || !firestore) return;
     
@@ -361,10 +410,44 @@ export function Dashboard() {
       };
       
       await setDoc(budgetRef, budgetData, { merge: true });
+      
+      // Auto-calculate and update savings goal after budget update
+      if (userDocRef && budgets) {
+        // Get updated budgets (including the one we just changed)
+        const updatedBudgets = budgets.map(b => 
+          b.Category === category 
+            ? { ...b, MonthlyBudget: newBudget, type: type || b.type || 'expense' }
+            : b
+        );
+        
+        // If this is a new budget, add it to the list
+        if (!budgets.find(b => b.Category === category)) {
+          updatedBudgets.push({
+            id: category, // Use category as id for new budgets
+            Category: category,
+            MonthlyBudget: newBudget,
+            type: type || 'expense'
+          });
+        }
+        
+        // Calculate new savings goal: Income Budget - Expense Budget
+        const totalIncomeBudget = updatedBudgets
+          .filter(budget => budget.type === 'income')
+          .reduce((total, budget) => total + (budget.MonthlyBudget || 0), 0);
+        
+        const totalExpenseBudget = updatedBudgets
+          .filter(budget => (budget.type || 'expense') === 'expense')
+          .reduce((total, budget) => total + (budget.MonthlyBudget || 0), 0);
+        
+        const newSavingsGoal = Math.max(0, totalIncomeBudget - totalExpenseBudget);
+        
+        // Update user's savings goal in Firebase
+        await updateDocumentNonBlocking(userDocRef, { savings: newSavingsGoal });
+      }
     } catch (error) {
       console.error("Failed to update budget:", error);
     }
-  }, [user, firestore]);
+  }, [user, firestore, userDocRef, budgets]);
 
   const handleAddCategory = useCallback(async (category: string, type?: CategoryType) => {
     if (!userDocRef || !finalUserData) return;
@@ -741,7 +824,7 @@ export function Dashboard() {
           {/* Balance Component */}
           <Balance
             totalSpending={totalSpent}
-            totalIncome={totalIncome}
+            realIncome={realIncome}
             netIncome={netIncome}
             budget={totalBudget}
             savingsGoal={finalUserData?.savings || 0}

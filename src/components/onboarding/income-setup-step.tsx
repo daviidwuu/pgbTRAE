@@ -59,86 +59,90 @@ export function IncomeSetupStep({ data, updateData, onNext }: IncomeSetupStepPro
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-primary/10 rounded-full">
-            <DollarSign className="h-8 w-8 text-primary" />
+    <div className="flex flex-col h-full">
+      {/* Header - Compact */}
+      <div className="text-center space-y-3 mb-6">
+        <div className="flex justify-center">
+          <div className="p-2 bg-primary/10 rounded-full">
+            <DollarSign className="h-6 w-6 text-primary" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold">Set up your finances</h2>
-        <p className="text-muted-foreground">
-          Tell us about your monthly income and savings goals.
-        </p>
+        <div>
+          <h2 className="text-xl font-bold">Set up your finances</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Monthly income and savings goals
+          </p>
+        </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleNext)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="income"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Monthly Income
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 5000"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    className="text-lg"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      {/* Form - Flexible content */}
+      <div className="flex-1">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleNext)} className="space-y-5">
+            <FormField
+              control={form.control}
+              name="income"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2 text-sm">
+                    <DollarSign className="h-3 w-3" />
+                    Monthly Income
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      {...field}
+                      value={field.value === 0 ? "" : field.value}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === "" ? 0 : parseFloat(value) || 0);
+                      }}
+                      className="text-center font-medium placeholder:font-medium placeholder:text-muted-foreground h-12 text-lg"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="savingsGoal"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Monthly Savings Goal (Optional)
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 1000"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    className="text-lg"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="savingsGoal"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2 text-sm">
+                    <Target className="h-3 w-3" />
+                    Monthly Savings Goal (Optional)
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      {...field}
+                      value={field.value === 0 ? "" : field.value}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === "" ? 0 : parseFloat(value) || 0);
+                      }}
+                      className="text-center font-medium placeholder:font-medium placeholder:text-muted-foreground h-12 text-lg"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {watchedIncome > 0 && watchedSavingsGoal > 0 && (
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                You&apos;ll have <span className="font-semibold text-foreground">
-                  ${(watchedIncome - watchedSavingsGoal).toLocaleString()}
-                </span> available for expenses after savings.
-              </p>
-            </div>
-          )}
-
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={!isValid}
-          >
-            Continue
-          </Button>
-        </form>
-      </Form>
+            <Button 
+              type="submit" 
+              className="w-full h-12 mt-6" 
+              disabled={!isValid}
+            >
+              Continue
+            </Button>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }

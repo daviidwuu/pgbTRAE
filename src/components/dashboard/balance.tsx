@@ -18,7 +18,7 @@ import { DateFilter, type DateRange } from "./date-filter";
 
 interface BalanceProps {
   totalSpending: number;
-  totalIncome: number;
+  realIncome: number;
   netIncome: number;
   budget: number;
   savingsGoal?: number;
@@ -31,7 +31,7 @@ interface BalanceProps {
 
 export function Balance({
   totalSpending,
-  totalIncome,
+  realIncome,
   netIncome,
   budget,
   savingsGoal = 0,
@@ -60,9 +60,10 @@ export function Balance({
 
   const spendingPercentage = budget > 0 ? (totalSpending / budget) * 100 : 0;
   const isOverBudget = spendingPercentage >= 100;
-  const amountLeft = Math.max(0, budget - totalSpending); // Ensure non-negative
-  // Reality calculation: Income minus expenses minus savings goal
-  const realityAmount = totalIncome - totalSpending - savingsGoal;
+  // Fixed: Allow negative values to show over-budget amounts
+  const amountLeft = budget - totalSpending;
+  // Fixed: Reality shows actual money left after spending and savings
+  const realityAmount = realIncome - totalSpending - savingsGoal;
 
   const handleAmountClick = () => {
     if (viewMode === 'spent') {
@@ -78,13 +79,13 @@ export function Balance({
     switch (viewMode) {
       case 'left':
         return {
-          main: `$${amountLeft.toFixed(2)}`,
-          suffix: amountLeft > 0 ? ' left in budget' : ' over budget'
+          main: `$${Math.abs(amountLeft).toFixed(2)}`,
+          suffix: amountLeft >= 0 ? ' left in budget' : ' over budget'
         };
       case 'reality':
         return {
           main: `$${Math.abs(realityAmount).toFixed(2)}`,
-          suffix: realityAmount >= 0 ? ' available' : ' deficit'
+          suffix: realityAmount >= 0 ? ' left after savings' : ' deficit'
         };
       default: // 'spent'
         return {
@@ -124,7 +125,7 @@ export function Balance({
                 <div className="text-3xl font-bold">
                   <span className="text-3xl font-bold">{displayContent.main}</span>
                   <span className={`text-lg font-normal ${
-                    viewMode === 'left' && amountLeft <= 0 ? 'text-red-500' :
+                    viewMode === 'left' && amountLeft < 0 ? 'text-red-500' :
                     viewMode === 'reality' && realityAmount < 0 ? 'text-red-500' :
                     'text-muted-foreground'
                   }`}>{displayContent.suffix}</span>
@@ -150,7 +151,7 @@ export function Balance({
                   <span>Income</span>
                 </div>
                 <div className="text-2xl font-bold text-green-600">
-                  +${totalIncome.toFixed(2)}
+                  +${realIncome.toFixed(2)}
                 </div>
               </div>
               <div className="space-y-2 text-right">

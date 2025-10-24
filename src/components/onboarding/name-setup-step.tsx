@@ -78,7 +78,7 @@ export function NameSetupStep({ data, updateData, onNext }: NameSetupStepProps) 
                   <Input
                     placeholder="e.g., David"
                     {...field}
-                    className="text-center text-lg"
+                    className="text-center font-medium placeholder:font-medium placeholder:text-muted-foreground"
                   />
                 </FormControl>
                 <FormMessage />

@@ -85,10 +85,11 @@ export function IncomeCategoriesStep({ data, updateData, onNext }: IncomeCategor
           {/* Add New Category */}
           <div className="flex gap-2">
             <Input
-              placeholder="Add income source (e.g., Freelance, Bonus)"
+              placeholder="Freelance, Bonus, etc."
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
               onKeyPress={handleKeyPress}
+              className="text-center font-medium placeholder:font-medium placeholder:text-muted-foreground"
             />
             <Button
               onClick={addCategory}
